@@ -1,0 +1,51 @@
+#!/usr/bin/env sh
+set -e
+
+BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+WRAPPER_PROPERTIES="$BASE_DIR/.mvn/wrapper/maven-wrapper.properties"
+
+if [ ! -f "$WRAPPER_PROPERTIES" ]; then
+  echo "Missing Maven wrapper properties: $WRAPPER_PROPERTIES" >&2
+  exit 1
+fi
+
+DISTRIBUTION_URL="$(sed -n 's/^distributionUrl=//p' "$WRAPPER_PROPERTIES" | tr -d '\r')"
+if [ -z "$DISTRIBUTION_URL" ]; then
+  echo "distributionUrl is not configured in $WRAPPER_PROPERTIES" >&2
+  exit 1
+fi
+
+ARCHIVE_NAME="${DISTRIBUTION_URL##*/}"
+MAVEN_VERSION="$(printf '%s' "$ARCHIVE_NAME" | sed -n 's/apache-maven-\(.*\)-bin\.zip/\1/p')"
+if [ -z "$MAVEN_VERSION" ]; then
+  echo "Could not determine Maven version from $DISTRIBUTION_URL" >&2
+  exit 1
+fi
+
+MAVEN_USER_HOME="${MAVEN_USER_HOME:-"$HOME/.m2"}"
+WRAPPER_DIR="$MAVEN_USER_HOME/wrapper/dists/apache-maven-$MAVEN_VERSION"
+ARCHIVE="$WRAPPER_DIR/$ARCHIVE_NAME"
+MAVEN_DIR="$WRAPPER_DIR/apache-maven-$MAVEN_VERSION"
+
+if [ ! -x "$MAVEN_DIR/bin/mvn" ]; then
+  mkdir -p "$WRAPPER_DIR"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$DISTRIBUTION_URL" -o "$ARCHIVE"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$DISTRIBUTION_URL" -O "$ARCHIVE"
+  else
+    echo "curl or wget is required to download Maven $MAVEN_VERSION" >&2
+    exit 1
+  fi
+
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q "$ARCHIVE" -d "$WRAPPER_DIR"
+  elif command -v jar >/dev/null 2>&1; then
+    (cd "$WRAPPER_DIR" && jar xf "$ARCHIVE")
+  else
+    echo "unzip or jar is required to extract Maven $MAVEN_VERSION" >&2
+    exit 1
+  fi
+fi
+
+exec "$MAVEN_DIR/bin/mvn" "$@"
