@@ -36,6 +36,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", exception.getMessage(), request, Map.of());
     }
 
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    ApiError handleConflict(ConflictException exception, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "Conflict", exception.getMessage(), request, Map.of());
+    }
+
     @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     ApiError handleUnauthorized(RuntimeException exception, HttpServletRequest request) {
