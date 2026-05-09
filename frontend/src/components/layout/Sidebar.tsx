@@ -10,8 +10,8 @@ interface SidebarProps {
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, disabled: false },
-  { label: "Alumnos", href: "#", icon: UserRound, disabled: true },
-  { label: "Ejercicios", href: "#", icon: Dumbbell, disabled: true },
+  { label: "Alumnos", href: "/students", icon: UserRound, disabled: false },
+  { label: "Ejercicios", href: "/exercises", icon: Dumbbell, disabled: false },
   { label: "Plantillas", href: "#", icon: FileStack, disabled: true },
   { label: "Rutinas", href: "#", icon: ClipboardList, disabled: true },
   { label: "Configuración", href: "/settings", icon: Settings, disabled: false },
