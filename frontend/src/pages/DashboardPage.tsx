@@ -6,8 +6,8 @@ import { useAuth } from "@/hooks/useAuth"
 const quickLinks = [
   { label: "Alumnos", icon: UserRound, href: "/students", available: true },
   { label: "Ejercicios", icon: Dumbbell, href: "/exercises", available: true },
-  { label: "Plantillas", icon: FileStack, href: "#", available: false },
-  { label: "Rutinas", icon: ClipboardList, href: "#", available: false },
+  { label: "Plantillas", icon: FileStack, href: "/templates", available: true },
+  { label: "Rutinas", icon: ClipboardList, href: "/students", available: true, hint: "Las rutinas se gestionan desde la ficha del alumno." },
 ]
 
 export function DashboardPage() {
@@ -32,6 +32,7 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <CardTitle className="text-base">{item.label}</CardTitle>
+                {"hint" in item ? <p className="mt-2 text-sm text-muted-foreground">{item.hint}</p> : null}
                 {item.available ? (
                   <Link className="mt-2 inline-block text-sm font-medium text-primary" to={item.href}>
                     Abrir

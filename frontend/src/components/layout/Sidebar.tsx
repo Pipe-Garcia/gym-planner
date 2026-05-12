@@ -1,4 +1,4 @@
-import { Dumbbell, LayoutDashboard, Settings, UserRound, X, ClipboardList, CircleDot, FileStack } from "lucide-react"
+import { Dumbbell, LayoutDashboard, Settings, UserRound, X, ClipboardList, FileStack } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,8 +12,8 @@ const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, disabled: false },
   { label: "Alumnos", href: "/students", icon: UserRound, disabled: false },
   { label: "Ejercicios", href: "/exercises", icon: Dumbbell, disabled: false },
-  { label: "Plantillas", href: "#", icon: FileStack, disabled: true },
-  { label: "Rutinas", href: "#", icon: ClipboardList, disabled: true },
+  { label: "Plantillas", href: "/templates", icon: FileStack, disabled: false },
+  { label: "Rutinas", href: "/routines", icon: ClipboardList, disabled: false },
   { label: "Configuración", href: "/settings", icon: Settings, disabled: false },
 ]
 
@@ -59,7 +59,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 >
                   <Icon className="h-5 w-5" />
                   <span>{item.label}</span>
-                  <CircleDot className="ml-auto h-3 w-3" />
                 </button>
               )
             }
