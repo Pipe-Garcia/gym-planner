@@ -9,3 +9,12 @@ build/
 .vscode/
 *.iml
 .DS_Store
+
+*.sql.dump
+
+*.dump
+
+backup_*.sql
+
+/backups/
+
