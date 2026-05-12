@@ -1,0 +1,141 @@
+-- =================== TEMPLATES ===================
+
+CREATE TABLE training_templates (
+    id              BIGSERIAL PRIMARY KEY,
+    gym_id          BIGINT NOT NULL REFERENCES gyms(id),
+    name            VARCHAR(150) NOT NULL,
+    description     TEXT,
+    sport           VARCHAR(100),
+    objective       VARCHAR(150),
+    level           VARCHAR(50),
+    estimated_duration_minutes  INTEGER,
+    general_notes   TEXT,
+    active          BOOLEAN NOT NULL DEFAULT true,
+    created_by_user_id  BIGINT NOT NULL REFERENCES users(id),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_templates_gym_active ON training_templates(gym_id, active);
+
+CREATE TABLE template_blocks (
+    id                      BIGSERIAL PRIMARY KEY,
+    template_id             BIGINT NOT NULL REFERENCES training_templates(id) ON DELETE CASCADE,
+    order_index             INTEGER NOT NULL,
+    title                   VARCHAR(150) NOT NULL,
+    structural_type         VARCHAR(30) NOT NULL CHECK (structural_type IN
+                                ('STANDARD','CIRCUIT','PYRAMID','REVERSE_PYRAMID','DROP_SET','REST_PAUSE','CLUSTER')),
+    purpose                 VARCHAR(30) CHECK (purpose IN
+                                ('WARMUP','ACTIVATION','MAIN_LIFT','ACCESSORY','CONDITIONING','CORE','COOLDOWN','OTHER')),
+    total_duration_seconds  INTEGER,
+    target_rounds           INTEGER,
+    block_notes             TEXT,
+    CONSTRAINT uk_tb_template_order UNIQUE (template_id, order_index)
+);
+
+CREATE INDEX idx_template_blocks_template ON template_blocks(template_id, order_index);
+
+CREATE TABLE template_exercises (
+    id                  BIGSERIAL PRIMARY KEY,
+    block_id            BIGINT NOT NULL REFERENCES template_blocks(id) ON DELETE CASCADE,
+    exercise_id         BIGINT NOT NULL REFERENCES exercises(id),
+    order_index         INTEGER NOT NULL,
+    exercise_notes      TEXT,
+    CONSTRAINT uk_te_block_order UNIQUE (block_id, order_index)
+);
+
+CREATE INDEX idx_template_exercises_block ON template_exercises(block_id, order_index);
+
+CREATE TABLE template_exercise_sets (
+    id                      BIGSERIAL PRIMARY KEY,
+    template_exercise_id    BIGINT NOT NULL REFERENCES template_exercises(id) ON DELETE CASCADE,
+    set_number              INTEGER NOT NULL,
+    set_kind                VARCHAR(30) NOT NULL DEFAULT 'NORMAL' CHECK (set_kind IN
+                                ('NORMAL','WARMUP','FAILURE','DROP','REST_PAUSE_PORTION')),
+    target_reps             INTEGER,
+    target_reps_min         INTEGER,
+    target_reps_max         INTEGER,
+    target_weight_kg        NUMERIC(6,2),
+    target_time_seconds     INTEGER,
+    target_distance_meters  NUMERIC(7,2),
+    rest_after_seconds      INTEGER,
+    tempo                   VARCHAR(20),
+    rpe                     INTEGER CHECK (rpe BETWEEN 1 AND 10),
+    notes                   TEXT,
+    to_failure              BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT uk_tes_te_setnum UNIQUE (template_exercise_id, set_number)
+);
+
+CREATE INDEX idx_tes_te ON template_exercise_sets(template_exercise_id, set_number);
+
+-- =================== ROUTINES ===================
+
+CREATE TABLE routines (
+    id                  BIGSERIAL PRIMARY KEY,
+    student_id          BIGINT NOT NULL REFERENCES students(id),
+    name                VARCHAR(150) NOT NULL,
+    objective           VARCHAR(150),
+    source_template_id  BIGINT REFERENCES training_templates(id) ON DELETE SET NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+                        CHECK (status IN ('ACTIVE','FINISHED','ARCHIVED','DRAFT')),
+    assigned_date       DATE NOT NULL,
+    finished_date       DATE,
+    general_notes       TEXT,
+    internal_notes      TEXT,
+    created_by_user_id  BIGINT NOT NULL REFERENCES users(id),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_routines_student ON routines(student_id, assigned_date DESC);
+CREATE INDEX idx_routines_status ON routines(student_id, status);
+
+CREATE TABLE routine_blocks (
+    id                      BIGSERIAL PRIMARY KEY,
+    routine_id              BIGINT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+    order_index             INTEGER NOT NULL,
+    title                   VARCHAR(150) NOT NULL,
+    structural_type         VARCHAR(30) NOT NULL CHECK (structural_type IN
+                                ('STANDARD','CIRCUIT','PYRAMID','REVERSE_PYRAMID','DROP_SET','REST_PAUSE','CLUSTER')),
+    purpose                 VARCHAR(30) CHECK (purpose IN
+                                ('WARMUP','ACTIVATION','MAIN_LIFT','ACCESSORY','CONDITIONING','CORE','COOLDOWN','OTHER')),
+    total_duration_seconds  INTEGER,
+    target_rounds           INTEGER,
+    block_notes             TEXT,
+    CONSTRAINT uk_rb_routine_order UNIQUE (routine_id, order_index)
+);
+
+CREATE INDEX idx_routine_blocks_routine ON routine_blocks(routine_id, order_index);
+
+CREATE TABLE routine_exercises (
+    id                  BIGSERIAL PRIMARY KEY,
+    block_id            BIGINT NOT NULL REFERENCES routine_blocks(id) ON DELETE CASCADE,
+    exercise_id         BIGINT NOT NULL REFERENCES exercises(id),
+    order_index         INTEGER NOT NULL,
+    exercise_notes      TEXT,
+    CONSTRAINT uk_re_block_order UNIQUE (block_id, order_index)
+);
+
+CREATE INDEX idx_routine_exercises_block ON routine_exercises(block_id, order_index);
+
+CREATE TABLE routine_exercise_sets (
+    id                      BIGSERIAL PRIMARY KEY,
+    routine_exercise_id     BIGINT NOT NULL REFERENCES routine_exercises(id) ON DELETE CASCADE,
+    set_number              INTEGER NOT NULL,
+    set_kind                VARCHAR(30) NOT NULL DEFAULT 'NORMAL' CHECK (set_kind IN
+                                ('NORMAL','WARMUP','FAILURE','DROP','REST_PAUSE_PORTION')),
+    target_reps             INTEGER,
+    target_reps_min         INTEGER,
+    target_reps_max         INTEGER,
+    target_weight_kg        NUMERIC(6,2),
+    target_time_seconds     INTEGER,
+    target_distance_meters  NUMERIC(7,2),
+    rest_after_seconds      INTEGER,
+    tempo                   VARCHAR(20),
+    rpe                     INTEGER CHECK (rpe BETWEEN 1 AND 10),
+    notes                   TEXT,
+    to_failure              BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT uk_res_re_setnum UNIQUE (routine_exercise_id, set_number)
+);
+
+CREATE INDEX idx_res_re ON routine_exercise_sets(routine_exercise_id, set_number);
