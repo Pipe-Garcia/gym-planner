@@ -41,6 +41,23 @@ export async function duplicateRoutine(id: number, data: DuplicateRoutineInput) 
   return response.data
 }
 
+export async function downloadRoutinePdf(routineId: number): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(`/api/routines/${routineId}/pdf`, {
+    responseType: "blob",
+  })
+  const contentDisposition = (response.headers["content-disposition"] ?? response.headers["Content-Disposition"] ?? "") as string
+  const match = contentDisposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+  const filename = match?.[1] ? decodeURIComponent(match[1]) : `rutina_${routineId}.pdf`
+  return { blob: response.data, filename }
+}
+
+export async function getRoutineWhatsAppText(routineId: number): Promise<string> {
+  const response = await apiClient.get<string>(`/api/routines/${routineId}/text`, {
+    responseType: "text",
+  })
+  return response.data
+}
+
 export async function finishRoutine(id: number) {
   const response = await apiClient.post<Routine>(`/api/routines/${id}/finish`)
   return response.data

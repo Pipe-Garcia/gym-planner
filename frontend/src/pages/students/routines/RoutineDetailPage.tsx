@@ -1,6 +1,7 @@
-import { Archive, CheckCircle, Copy, Pencil } from "lucide-react"
+import { Archive, CheckCircle, Copy, Download, MessageCircle, Pencil } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
+import { downloadRoutinePdf, getRoutineWhatsAppText } from "@/api/routines"
 import { DuplicateRoutineDialog } from "@/components/routine/DuplicateRoutineDialog"
 import { BackButton } from "@/components/shared/BackButton"
 import { TrainingPlanReadOnlyView } from "@/components/template/TrainingPlanReadOnlyView"
@@ -37,6 +38,35 @@ export function RoutineDetailPage() {
     await routineQuery.refetch()
   }
 
+  async function handleDownloadPdf() {
+    try {
+      const { blob, filename } = await downloadRoutinePdf(routineId)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      toast.success("PDF descargado.")
+    } catch (error) {
+      toast.error("No se pudo generar el PDF.")
+      console.error("PDF download failed:", error)
+    }
+  }
+
+  async function handleCopyWhatsApp() {
+    try {
+      const text = await getRoutineWhatsAppText(routineId)
+      await navigator.clipboard.writeText(text)
+      toast.success("Texto copiado al portapapeles.")
+    } catch (error) {
+      toast.error("No se pudo copiar. Probá generar de nuevo.")
+      console.error("WhatsApp text copy failed:", error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <BackButton to={`/students/${routine.studentId}`} />
@@ -60,6 +90,8 @@ export function RoutineDetailPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={handleDownloadPdf}><Download className={actionIconClass} />PDF</Button>
+          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={handleCopyWhatsApp}><MessageCircle className={actionIconClass} />WhatsApp</Button>
           {routine.status !== "FINISHED" && routine.status !== "ARCHIVED" ? (
             <Button asChild size="sm" className={actionButtonClass}>
               <Link to={`/students/${routine.studentId}/routines/${routine.id}/edit`}><Pencil className={actionIconClass} />Editar</Link>

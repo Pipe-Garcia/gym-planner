@@ -14,6 +14,7 @@ public interface RoutineRepository extends JpaRepository<Routine, Long>, JpaSpec
     @Query("""
             SELECT DISTINCT r FROM Routine r
             LEFT JOIN FETCH r.student st
+            LEFT JOIN FETCH st.gym gym
             LEFT JOIN FETCH r.sourceTemplate tmpl
             LEFT JOIN FETCH r.days d
             LEFT JOIN FETCH d.blocks b
@@ -24,6 +25,21 @@ public interface RoutineRepository extends JpaRepository<Routine, Long>, JpaSpec
             WHERE r.id = :id
             """)
     Optional<Routine> findByIdWithFullStructure(@Param("id") Long id);
+
+    @Query("""
+            SELECT DISTINCT r FROM Routine r
+            LEFT JOIN FETCH r.student st
+            LEFT JOIN FETCH st.gym gym
+            LEFT JOIN FETCH r.sourceTemplate tmpl
+            LEFT JOIN FETCH r.days d
+            LEFT JOIN FETCH d.blocks b
+            LEFT JOIN FETCH b.exercises e
+            LEFT JOIN FETCH e.sets s
+            LEFT JOIN FETCH e.exercise ex
+            LEFT JOIN FETCH ex.tags tags
+            WHERE r.id = :id AND gym.id = :gymId
+            """)
+    Optional<Routine> findByIdWithFullStructure(@Param("id") Long id, @Param("gymId") Long gymId);
 
     @Query("SELECT COUNT(d) FROM RoutineDay d WHERE d.routine.id = :routineId")
     long countDays(@Param("routineId") Long routineId);
