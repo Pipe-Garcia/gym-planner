@@ -1,16 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Archive, CheckCircle, Save, Trash2 } from "lucide-react"
+import { Info, Save } from "lucide-react"
 import { useEffect } from "react"
 import { FormProvider, useForm, type FieldErrors, type Resolver } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
-import { BackButton } from "@/components/shared/BackButton"
+import { RoutineActionsBar } from "@/components/routine/RoutineActionsBar"
+import { RoutineIdentityHeader } from "@/components/routine/RoutineIdentityHeader"
 import { TemplateMetadataForm } from "@/components/template/TemplateMetadataForm"
 import { TrainingDaysEditor } from "@/components/template/TrainingDaysEditor"
 import { defaultDay, normalizeBlockForSubmit, normalizeBlockOrder } from "@/components/template/formDefaults"
 import { Button } from "@/components/ui/button"
-import { useRoutine, useRoutineAction, useUpdateRoutine } from "@/hooks/useRoutines"
+import { useRoutine, useUpdateRoutine } from "@/hooks/useRoutines"
 import { useToast } from "@/hooks/useToast"
-import { routineStatusBadgeClass, routineStatusLabel } from "@/lib/labels"
+import { formatDateEs } from "@/lib/date"
 import { routineFormSchema, type RoutineFormValues } from "@/schemas/template.schema"
 import type { Routine, RoutineInput } from "@/types/training"
 
@@ -23,7 +24,6 @@ export function RoutineEditorPage() {
   const routineId = Number(useParams().routineId)
   const routineQuery = useRoutine(routineId)
   const update = useUpdateRoutine(routineId, studentId)
-  const actions = useRoutineAction(studentId)
   const form = useForm<RoutineFormValues>({
     resolver: zodResolver(routineFormSchema) as unknown as Resolver<RoutineFormValues>,
     defaultValues: { name: "", description: null, sport: null, objective: null, level: null, assignedDate: new Date().toISOString().slice(0, 10), generalNotes: null, internalNotes: null, status: "DRAFT", days: [defaultDay(1)] },
@@ -34,6 +34,13 @@ export function RoutineEditorPage() {
   useEffect(() => {
     if (routine) form.reset(routineToForm(routine))
   }, [routine, form])
+
+  useEffect(() => {
+    if (routine?.status === "FINISHED" || routine?.status === "ARCHIVED") {
+      toast.info("Esta rutina no se puede editar.")
+      navigate(`/students/${studentId}/routines/${routine.id}`, { replace: true })
+    }
+  }, [navigate, routine, studentId, toast])
 
   async function onSubmit(values: RoutineFormValues) {
     try {
@@ -55,29 +62,37 @@ export function RoutineEditorPage() {
   return (
     <FormProvider {...form}>
       <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <BackButton to={`/students/${studentId}/routines/${routineId}`} />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-normal">{routine?.name || "Rutina"}</h1>
-              <span className={routineStatusBadgeClass(routine?.status)}>{routineStatusLabel(routine?.status)}</span>
-            </div>
-            <p className="text-base font-medium text-foreground">{routine?.studentName}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="ghost" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/students/${studentId}`, { replace: true }))}>
+          ← Volver
+        </Button>
+        {routine ? (
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <RoutineIdentityHeader routine={routine} />
+            <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
             {!readOnly ? (
               <Button type="submit">
                 <Save className="h-4 w-4" />
-                Guardar
+                Guardar cambios
               </Button>
             ) : null}
-            {routine?.status === "DRAFT" ? <Button type="button" onClick={async () => { await actions.activate.mutateAsync(routine.id); toast.success("Rutina activada."); await routineQuery.refetch() }}><CheckCircle className="h-4 w-4" />Activar rutina</Button> : null}
-            {routine?.status === "ACTIVE" ? <Button type="button" variant="outline" onClick={async () => { await actions.finish.mutateAsync(routine.id); toast.success("Rutina finalizada."); await routineQuery.refetch() }}><CheckCircle className="h-4 w-4" />Finalizar</Button> : null}
-            {routine?.status === "ACTIVE" || routine?.status === "FINISHED" ? <Button type="button" variant="outline" onClick={async () => { await actions.archive.mutateAsync(routine.id); toast.success("Rutina archivada."); await routineQuery.refetch() }}><Archive className="h-4 w-4" />Archivar</Button> : null}
-            {routine?.status === "DRAFT" ? <Button type="button" variant="destructive" onClick={async () => { await actions.deleteDraft.mutateAsync(routine.id); navigate(`/students/${studentId}`) }}><Trash2 className="h-4 w-4" />Eliminar</Button> : null}
+              <RoutineActionsBar routine={routine} studentId={studentId} mode="editor" onRoutineChanged={() => { void routineQuery.refetch() }} />
+            </div>
           </div>
-        </div>
-        {readOnly ? <div className="rounded-md border bg-amber-50 p-4 text-sm text-amber-800">Esta rutina ya finalizo. Para modificarla, duplicala como nueva.</div> : null}
+        ) : null}
+        {readOnly && routine ? (
+          <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Esta rutina fue finalizada el {formatDateEs(routine.finishedAt ?? routine.finishedDate)}. No se puede editar.</p>
+                {routine.closureNotes ? <p className="mt-2 whitespace-pre-wrap">Nota de cierre: {routine.closureNotes}</p> : null}
+              </div>
+            </div>
+            <Button type="button" variant="outline" onClick={() => navigate(`/students/${studentId}/routines/new`, { state: { fromRoutineId: routine.id } })}>
+              Crear próxima rutina desde esta →
+            </Button>
+          </div>
+        ) : null}
         <TemplateMetadataForm routine readOnly={readOnly} />
         <TrainingDaysEditor context="routine" disabled={readOnly} />
       </form>

@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/client"
-import type { DuplicateRoutineInput, Routine, RoutineInput, RoutineListParams, RoutinePage, RoutineStatus } from "@/types/training"
+import type { CreateNextRoutineInput, CreateNextRoutineResponse, DuplicateRoutineInput, FinishAndCreateNextInput, FinishAndCreateNextResponse, Routine, RoutineInput, RoutineListParams, RoutinePage, RoutineStatus } from "@/types/training"
 
 export async function listStudentRoutines(studentId: number, params: RoutineListParams = {}) {
   const response = await apiClient.get<RoutinePage>(`/api/students/${studentId}/routines`, { params })
@@ -58,21 +58,31 @@ export async function getRoutineWhatsAppText(routineId: number): Promise<string>
   return response.data
 }
 
-export async function finishRoutine(id: number) {
-  const response = await apiClient.post<Routine>(`/api/routines/${id}/finish`)
+export async function finishRoutine(routineId: number, data: { closureNotes?: string } = {}) {
+  const response = await apiClient.post<Routine>(`/api/routines/${routineId}/finish`, data)
   return response.data
 }
 
-export async function archiveRoutine(id: number) {
-  const response = await apiClient.post<Routine>(`/api/routines/${id}/archive`)
+export async function archiveRoutine(routineId: number) {
+  const response = await apiClient.post<Routine>(`/api/routines/${routineId}/archive`)
   return response.data
 }
 
-export async function activateRoutine(id: number) {
-  const response = await apiClient.post<Routine>(`/api/routines/${id}/activate`)
+export async function activateRoutine(routineId: number) {
+  const response = await apiClient.post<Routine>(`/api/routines/${routineId}/activate`)
   return response.data
 }
 
-export async function deleteRoutine(id: number) {
-  await apiClient.delete(`/api/routines/${id}`)
+export async function deleteRoutine(routineId: number) {
+  await apiClient.delete(`/api/routines/${routineId}`)
+}
+
+export async function finishAndCreateNext(data: FinishAndCreateNextInput) {
+  const response = await apiClient.post<FinishAndCreateNextResponse>("/api/routines/finish-and-create-next", data)
+  return response.data
+}
+
+export async function createNextRoutine(sourceRoutineId: number, data: CreateNextRoutineInput) {
+  const response = await apiClient.post<CreateNextRoutineResponse>(`/api/routines/${sourceRoutineId}/create-next`, data)
+  return response.data
 }

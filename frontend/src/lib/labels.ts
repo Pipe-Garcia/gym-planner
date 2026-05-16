@@ -58,5 +58,8 @@ export function routineStatusBadgeClass(status?: RoutineStatus | "CANCELLED" | n
     ARCHIVED: "bg-slate-100 text-slate-700 ring-slate-300",
     CANCELLED: "bg-rose-50 text-rose-700 ring-rose-200",
   }
-  return cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium leading-none ring-1 ring-inset", status ? styles[status] : "bg-muted text-muted-foreground ring-border")
+  return cn(
+    "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
+    status ? styles[status] : "bg-muted text-muted-foreground ring-border",
+  )
 }

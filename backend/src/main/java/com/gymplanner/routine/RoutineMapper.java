@@ -20,7 +20,8 @@ public class RoutineMapper {
         String studentName = routine.getStudent().getFirstName() + " " + routine.getStudent().getLastName();
         Long sourceTemplateId = routine.getSourceTemplate() == null ? null : routine.getSourceTemplate().getId();
         String sourceTemplateName = routine.getSourceTemplate() == null ? null : routine.getSourceTemplate().getName();
-        return new RoutineResponse(routine.getId(), routine.getStudent().getId(), studentName, routine.getName(), routine.getObjective(), sourceTemplateId, sourceTemplateName, routine.getStatus(), routine.getAssignedDate(), routine.getFinishedDate(), routine.getGeneralNotes(), routine.getInternalNotes(), routine.getCreatedByUser().getId(), routine.getDays().stream().sorted(Comparator.comparingInt(RoutineDay::getOrderIndex)).map(this::toDay).toList(), routine.getCreatedAt(), routine.getUpdatedAt());
+        Long previousRoutineId = routine.getPreviousRoutine() == null ? null : routine.getPreviousRoutine().getId();
+        return new RoutineResponse(routine.getId(), routine.getStudent().getId(), studentName, routine.getName(), routine.getObjective(), sourceTemplateId, sourceTemplateName, routine.getStatus(), routine.getAssignedDate(), routine.getFinishedDate(), routine.getFinishedAt(), routine.getGeneralNotes(), routine.getInternalNotes(), routine.getClosureNotes(), previousRoutineId, routine.getCreatedByUser().getId(), routine.getDays().stream().sorted(Comparator.comparingInt(RoutineDay::getOrderIndex)).map(this::toDay).toList(), routine.getCreatedAt(), routine.getUpdatedAt());
     }
 
     public RoutineSummaryResponse toSummary(Routine routine, long dayCount, long blockCount, long exerciseCount) {

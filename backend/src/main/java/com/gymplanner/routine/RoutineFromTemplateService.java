@@ -10,6 +10,7 @@ import com.gymplanner.template.TemplateExercise;
 import com.gymplanner.template.TemplateExerciseSet;
 import com.gymplanner.template.TemplateService;
 import com.gymplanner.template.TrainingTemplate;
+import com.gymplanner.user.User;
 import com.gymplanner.user.UserRepository;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -33,8 +34,9 @@ public class RoutineFromTemplateService {
         TrainingTemplate template = templateService.getFull(gymId, request.templateId());
         Student student = studentService.getEntity(gymId, request.studentId());
         RoutineStatus status = request.status() == null ? RoutineStatus.ACTIVE : request.status();
+        User currentUser = userRepository.getReferenceById(userId);
         if (status == RoutineStatus.ACTIVE) {
-            routineService.finishPreviousActive(gymId, student.getId());
+            routineService.finishPreviousActive(gymId, student.getId(), null, currentUser);
         }
         Routine routine = new Routine();
         routine.setStudent(student);
@@ -45,7 +47,7 @@ public class RoutineFromTemplateService {
         routine.setAssignedDate(request.assignedDate() == null ? LocalDate.now() : request.assignedDate());
         routine.setGeneralNotes(StringUtils.hasText(request.generalNotes()) ? request.generalNotes().trim() : template.getGeneralNotes());
         routine.setInternalNotes(clean(request.internalNotes()));
-        routine.setCreatedByUser(userRepository.getReferenceById(userId));
+        routine.setCreatedByUser(currentUser);
         for (TemplateDay sourceDay : template.getDays()) {
             routine.getDays().add(copyDay(sourceDay, routine));
         }
