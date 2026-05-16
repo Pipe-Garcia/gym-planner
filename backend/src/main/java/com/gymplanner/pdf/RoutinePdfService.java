@@ -153,32 +153,39 @@ public class RoutinePdfService {
         List<RoutineExercise> exercises = block.getExercises().stream()
                 .sorted(Comparator.comparingInt(RoutineExercise::getOrderIndex))
                 .toList();
-        MeasurementType measurement = exercises.stream()
-                .map(exercise -> exercise.getExercise().getDefaultMeasurement())
-                .filter(Objects::nonNull)
+        MeasurementType firstMeasurement = exercises.stream()
+                .map(this::measurementOf)
                 .findFirst()
                 .orElse(MeasurementType.REPS_WEIGHT);
 
         boolean isCircuit = block.getStructuralType() == BlockStructuralType.CIRCUIT;
+        // Bloque mixto: tiene ejercicios con measurements distintos (e.g. plancha TIME + saltos REPS_ONLY).
+        // En ese caso fusionamos las columnas variables en una sola "Objetivo" para que cada ejercicio
+        // pueda mostrar su info sin perder datos por no encajar en la columna del primero.
+        boolean isMixed = !isCircuit && hasMixedMeasurements(exercises);
         boolean collapsed = !isCircuit
                 && block.getStructuralType() == BlockStructuralType.STANDARD
                 && exercises.stream().allMatch(exercise -> allSetsAreEquivalent(orderedSets(exercise)));
 
         List<String> columns;
         if (isCircuit) {
-            columns = circuitColumns(measurement);
+            columns = circuitColumns(firstMeasurement);
+        } else if (isMixed) {
+            columns = mixedColumns(collapsed);
         } else if (collapsed) {
-            columns = collapsedColumns(measurement);
+            columns = collapsedColumns(firstMeasurement);
         } else {
-            columns = expandedColumns(measurement);
+            columns = expandedColumns(firstMeasurement);
         }
 
         List<PdfExerciseRowDto> rows = new ArrayList<>();
         for (RoutineExercise exercise : exercises) {
             if (isCircuit) {
-                rows.add(circuitRow(exercise, measurement));
+                rows.add(circuitRow(exercise, firstMeasurement));
+            } else if (isMixed) {
+                rows.addAll(mixedExerciseRows(exercise, collapsed));
             } else {
-                rows.addAll(mapExerciseRows(exercise, measurement, collapsed));
+                rows.addAll(mapExerciseRows(exercise, firstMeasurement, collapsed));
             }
         }
 
@@ -221,27 +228,40 @@ public class RoutinePdfService {
         return rows;
     }
 
-    /**
-     * Renderiza un ejercicio dentro de un bloque CIRCUIT como una sola fila
-     * con el target (reps/tiempo/distancia) y opcionalmente peso. Sin "Set",
-     * sin "Series", sin "Descanso", porque en un circuito esos conceptos no
-     * aplican: el orden es la rotación temporal del bloque entero.
-     */
-    private PdfExerciseRowDto circuitRow(RoutineExercise exercise, MeasurementType measurement) {
+    private PdfExerciseRowDto circuitRow(RoutineExercise exercise, MeasurementType blockMeasurement) {
         List<RoutineExerciseSet> sets = orderedSets(exercise);
         String tagsLabel = "";
         String sanitizedNotes = sanitizeNotes(exercise.getExerciseNotes());
+
+        MeasurementType exerciseMeasurement = exercise.getExercise().getDefaultMeasurement();
+        if (exerciseMeasurement == null) {
+            exerciseMeasurement = blockMeasurement;
+        }
+
         if (sets.isEmpty()) {
-            return new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, circuitEmptyCells(measurement));
+            return new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, circuitEmptyCells(exerciseMeasurement));
         }
         RoutineExerciseSet ref = sets.getFirst();
-        return new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, circuitCells(ref, measurement));
+        return new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, circuitCells(ref, exerciseMeasurement));
     }
 
     private List<RoutineExerciseSet> orderedSets(RoutineExercise exercise) {
         return exercise.getSets().stream()
                 .sorted(Comparator.comparingInt(RoutineExerciseSet::getSetNumber))
                 .toList();
+    }
+
+    private boolean hasMixedMeasurements(List<RoutineExercise> exercises) {
+        if (exercises.size() <= 1) return false;
+        return exercises.stream()
+                .map(this::measurementOf)
+                .distinct()
+                .count() > 1;
+    }
+
+    private MeasurementType measurementOf(RoutineExercise exercise) {
+        MeasurementType m = exercise.getExercise().getDefaultMeasurement();
+        return m == null ? MeasurementType.REPS_WEIGHT : m;
     }
 
     private boolean allSetsAreEquivalent(List<RoutineExerciseSet> sets) {
@@ -278,6 +298,61 @@ public class RoutinePdfService {
     }
 
     /**
+     * Columnas para bloques con measurements mixtos. La columna del medio
+     * fusiona Reps/Tiempo/Distancia/Peso en una única "Objetivo".
+     */
+    private List<String> mixedColumns(boolean collapsed) {
+        return collapsed
+                ? List.of("Series", "Objetivo", "Descanso")
+                : List.of("Serie", "Objetivo", "Descanso");
+    }
+
+    /**
+     * Construye las filas para un ejercicio dentro de un bloque mixto.
+     * Cada ejercicio usa su propio measurement para construir el "objetivo".
+     * Reutiliza circuitObjectiveLabel porque hace exactamente lo que necesitamos:
+     * "10 reps · 20 kg", "60s", "100 m", etc.
+     */
+    private List<PdfExerciseRowDto> mixedExerciseRows(RoutineExercise exercise, boolean collapsed) {
+        List<RoutineExerciseSet> sets = orderedSets(exercise);
+        String tagsLabel = "";
+        String sanitizedNotes = sanitizeNotes(exercise.getExerciseNotes());
+        MeasurementType measurement = measurementOf(exercise);
+
+        if (sets.isEmpty()) {
+            return List.of(new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, List.of("-", "-", "-")));
+        }
+
+        if (collapsed) {
+            RoutineExerciseSet ref = sets.getFirst();
+            int count = sets.size();
+            String seriesLabel = String.valueOf(count);
+            String objective = circuitObjectiveLabel(ref, measurement);
+            String rest = plainTime(ref.getRestAfterSeconds());
+            return List.of(new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, List.of(seriesLabel, objective, rest)));
+        }
+
+        int rowspan = sets.size();
+        List<PdfExerciseRowDto> rows = new ArrayList<>();
+        for (int i = 0; i < sets.size(); i++) {
+            RoutineExerciseSet set = sets.get(i);
+            String objective = circuitObjectiveLabel(set, measurement);
+            String rest = plainTime(set.getRestAfterSeconds());
+            List<String> cells = List.of(String.valueOf(set.getSetNumber()), objective, rest);
+            List<String> pdfCells = List.of(serieLabel(set.getSetNumber()), objective, rest);
+            rows.add(new PdfExerciseRowDto(
+                    i == 0,
+                    rowspan,
+                    exercise.getExercise().getName(),
+                    tagsLabel,
+                    sanitizedNotes,
+                    cells,
+                    pdfCells));
+        }
+        return rows;
+    }
+
+    /**
      * Columnas para circuito: solo el target. Sin Set/Series/Descanso porque
      * el circuito se ejecuta como rotación temporal del bloque.
      */
@@ -293,24 +368,35 @@ public class RoutinePdfService {
         return circuitColumns(measurement).stream().map(column -> "-").toList();
     }
 
+    /**
+     * Modo colapsado (todas las series iguales): los headers de columna ya
+     * dicen "Series", "Reps", "Peso", "Descanso", así que las celdas son
+     * solo el valor sin la palabra repetida.
+     */
     private List<String> collapsedCells(List<RoutineExerciseSet> sets, MeasurementType measurement) {
         RoutineExerciseSet ref = sets.getFirst();
         int count = sets.size();
-        String seriesLabel = count + (count == 1 ? " serie" : " series");
+        String seriesLabel = String.valueOf(count);
         return switch (measurement) {
-            case REPS_WEIGHT -> List.of(seriesLabel, repsLabel(ref), weightLabel(ref.getTargetWeightKg()), restLabel(ref.getRestAfterSeconds()));
-            case REPS_ONLY, CIRCUIT_REPS -> List.of(seriesLabel, repsLabel(ref), restLabel(ref.getRestAfterSeconds()));
-            case TIME -> List.of(seriesLabel, timeLabel(ref.getTargetTimeSeconds()), restLabel(ref.getRestAfterSeconds()));
-            case DISTANCE -> List.of(seriesLabel, distanceLabel(ref.getTargetDistanceMeters()), restLabel(ref.getRestAfterSeconds()));
+            case REPS_WEIGHT -> List.of(seriesLabel, plainReps(ref), plainWeight(ref.getTargetWeightKg()), plainTime(ref.getRestAfterSeconds()));
+            case REPS_ONLY, CIRCUIT_REPS -> List.of(seriesLabel, plainReps(ref), plainTime(ref.getRestAfterSeconds()));
+            case TIME -> List.of(seriesLabel, plainTime(ref.getTargetTimeSeconds()), plainTime(ref.getRestAfterSeconds()));
+            case DISTANCE -> List.of(seriesLabel, plainDistance(ref.getTargetDistanceMeters()), plainTime(ref.getRestAfterSeconds()));
         };
     }
 
+    /**
+     * Modo expandido (pirámide, drop set, etc.): los headers son "Serie",
+     * "Reps", "Peso", "Descanso". Las celdas usan los valores sin las
+     * palabras repetidas. La columna "Serie" sí lleva el nombre completo
+     * ("Primera serie") para que se lea natural.
+     */
     private List<String> expandedCells(RoutineExerciseSet set, MeasurementType measurement) {
         return switch (measurement) {
-            case REPS_WEIGHT -> List.of(setName(set), repsLabel(set), weightLabel(set.getTargetWeightKg()), restLabel(set.getRestAfterSeconds()));
-            case REPS_ONLY, CIRCUIT_REPS -> List.of(setName(set), repsLabel(set), restLabel(set.getRestAfterSeconds()));
-            case TIME -> List.of(setName(set), timeLabel(set.getTargetTimeSeconds()), restLabel(set.getRestAfterSeconds()));
-            case DISTANCE -> List.of(setName(set), distanceLabel(set.getTargetDistanceMeters()), restLabel(set.getRestAfterSeconds()));
+            case REPS_WEIGHT -> List.of(setName(set), plainReps(set), plainWeight(set.getTargetWeightKg()), plainTime(set.getRestAfterSeconds()));
+            case REPS_ONLY, CIRCUIT_REPS -> List.of(setName(set), plainReps(set), plainTime(set.getRestAfterSeconds()));
+            case TIME -> List.of(setName(set), plainTime(set.getTargetTimeSeconds()), plainTime(set.getRestAfterSeconds()));
+            case DISTANCE -> List.of(setName(set), plainDistance(set.getTargetDistanceMeters()), plainTime(set.getRestAfterSeconds()));
         };
     }
 
@@ -326,6 +412,11 @@ public class RoutinePdfService {
         return List.of(circuitObjectiveLabel(set, measurement));
     }
 
+    /**
+     * En circuito sí mantenemos las palabras ("8 reps", "1 min", etc.)
+     * porque la columna única "Objetivo" no contextualiza qué es cada
+     * valor — sin las palabras, "8 · 20 kg" sería ambiguo.
+     */
     private String circuitObjectiveLabel(RoutineExerciseSet set, MeasurementType measurement) {
         return switch (measurement) {
             case REPS_WEIGHT -> joinNonEmpty(repsLabel(set), weightLabel(set.getTargetWeightKg()));
@@ -366,6 +457,8 @@ public class RoutinePdfService {
         };
     }
 
+    /* ── Labels "con palabras" — usados en circuito y WhatsApp ─────────── */
+
     private String repsLabel(RoutineExerciseSet set) {
         if (set.isToFailure()) return "al fallo";
         if (set.getTargetReps() != null) return set.getTargetReps() + " reps";
@@ -396,6 +489,33 @@ public class RoutinePdfService {
         return trim(meters) + " m";
     }
 
+    /* ── Labels "sin palabras" — usados en celdas de tabla del PDF ─────── */
+
+    private String plainReps(RoutineExerciseSet set) {
+        if (set.isToFailure()) return "al fallo";
+        if (set.getTargetReps() != null) return String.valueOf(set.getTargetReps());
+        if (set.getTargetRepsMin() != null && set.getTargetRepsMax() != null) {
+            return set.getTargetRepsMin() + "-" + set.getTargetRepsMax();
+        }
+        return "-";
+    }
+
+    private String plainTime(Integer seconds) {
+        if (seconds == null) return "-";
+        if (seconds % 60 == 0) return (seconds / 60) + " min";
+        return seconds + "s";
+    }
+
+    private String plainWeight(BigDecimal weight) {
+        if (weight == null) return "-";
+        return trim(weight) + " kg";
+    }
+
+    private String plainDistance(BigDecimal meters) {
+        if (meters == null) return "-";
+        return trim(meters) + " m";
+    }
+
     private String circuitNote(RoutineBlock block, int exerciseCount) {
         if (block.getStructuralType() != BlockStructuralType.CIRCUIT || block.getTotalDurationSeconds() == null) {
             return null;
@@ -404,17 +524,14 @@ public class RoutinePdfService {
         return "Rotar entre los " + exerciseCount + " ejercicios sin descanso durante " + minutes + " minutos. Volver al inicio al terminar.";
     }
 
+    /**
+     * El tipo estructural se mantiene en el DTO para uso interno
+     * (WhatsApp puede seguir usándolo si tiene sentido). Pero en el PDF
+     * ya no se muestra como badge: el nombre del bloque y, si aplica, la
+     * nota de circuito, alcanzan para que el alumno entienda qué hacer.
+     */
     private String typeLabel(BlockStructuralType structuralType) {
-        if (structuralType == null) return null;
-        return switch (structuralType) {
-            case STANDARD -> null;
-            case CIRCUIT -> "Circuito";
-            case PYRAMID -> "Pirámide";
-            case REVERSE_PYRAMID -> "Pirámide inversa";
-            case DROP_SET -> "Drop set";
-            case REST_PAUSE -> "Rest pause";
-            case CLUSTER -> "Cluster";
-        };
+        return null;
     }
 
     private String firstText(String first, String second) {
@@ -422,10 +539,6 @@ public class RoutinePdfService {
         return StringUtils.hasText(second) ? second : null;
     }
 
-    /**
-     * Devuelve null si las notas vienen vacías, en blanco, o contienen
-     * solo un guion. Esto evita renderizar "-" suelto en el PDF.
-     */
     private String sanitizeNotes(String notes) {
         if (notes == null) return null;
         String trimmed = notes.trim();

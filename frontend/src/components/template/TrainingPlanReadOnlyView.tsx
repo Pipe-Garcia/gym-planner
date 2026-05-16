@@ -49,17 +49,17 @@ export function TrainingPlanReadOnlyView({ days, context }: TrainingPlanReadOnly
         </div>
       ) : null}
 
-      {activeDay ? <TrainingDayReadOnly day={activeDay} context={context} /> : null}
+      {activeDay ? <TrainingDayReadOnly day={activeDay} dayNumber={orderedDays.indexOf(activeDay) + 1} context={context} /> : null}
     </div>
   )
 }
 
-export function TrainingDayReadOnly({ day, context }: { day: TrainingDay; context: TrainingContext }) {
+export function TrainingDayReadOnly({ day, dayNumber, context }: { day: TrainingDay; dayNumber?: number; context: TrainingContext }) {
   const blocks = [...day.blocks].sort((a, b) => a.orderIndex - b.orderIndex)
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold tracking-normal">{day.name}</h2>
+        <h2 className="text-center text-xl font-semibold tracking-normal">{dayNumber ? `Dia ${dayNumber}: ${day.name}` : day.name}</h2>
         {day.notes ? <p className="mt-1 text-sm text-muted-foreground">{day.notes}</p> : null}
       </div>
       {sections.map((section) => (

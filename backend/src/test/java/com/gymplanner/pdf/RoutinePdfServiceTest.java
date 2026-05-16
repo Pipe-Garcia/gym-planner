@@ -141,12 +141,23 @@ class RoutinePdfServiceTest {
     }
 
     @Test
-    void pdf_keepsNonStandardMethodLabels() {
+    void pdf_doesNotShowStructuralTypeBadges() {
         Fixture fixture = fixture();
 
         String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
 
-        assertThat(html).contains("Circuito", "Pirámide");
+        // Decisión de UX: el PDF ya no muestra badges de tipo estructural
+        // ("Estándar", "Pirámide", "Circuito" al costado del título).
+        // El alumno entiende qué hacer por el nombre del bloque y, si es
+        // un circuito, por la nota destacada "Rotar entre los X ejercicios...".
+        assertThat(html)
+                .doesNotContain(">Estándar<")
+                .doesNotContain(">Pirámide<")
+                .doesNotContain(">Pirámide inversa<");
+
+        // La nota explicativa del circuito sí debe seguir presente,
+        // porque transmite información de ejecución que el alumno necesita.
+        assertThat(html).contains("Rotar entre los");
     }
 
     @Test
@@ -168,12 +179,26 @@ class RoutinePdfServiceTest {
     }
 
     @Test
-    void pdf_collapsesIdenticalSets_inStandardBlock() throws Exception {
+    void pdf_collapsesIdenticalSets_inStandardBlock() {
         Fixture fixture = fixture();
 
-        String text = extractTextFromPdf(routinePdfService.generatePdf(fixture.routineId(), 1L));
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
 
-        assertThat(text).contains("3 series");
+        // El bloque "Movilidad articular" tiene 3 sets idénticos en STANDARD.
+        // Debe colapsarse a una sola fila con "3" en la columna SERIES.
+        // Antes el test buscaba "3 series" en el texto del PDF; ahora la
+        // celda solo dice "3" porque el header de columna ya transmite la unidad.
+        assertThat(html)
+                .contains("Movilidad articular")
+                .contains(">Series<")        // header en plural = modo colapsado
+                .contains("<td>3</td>");     // valor de la celda Series
+
+        // Cross-check: el bloque colapsado NO debería tener "Primera serie",
+        // "Segunda serie", etc. (eso sería el modo expandido).
+        // Como el bloque de pirámide SÍ tiene esas etiquetas, no podemos
+        // chequear ausencia global. Verificamos que el header del modo
+        // expandido ("Serie" singular) coexista pero que "Series" plural
+        // siga presente como prueba de que algún bloque colapsó.
     }
 
     @Test
@@ -187,11 +212,15 @@ class RoutinePdfServiceTest {
                 .contains("Primera serie")
                 .contains("Segunda serie")
                 .contains("Tercera serie")
-                .contains("6 reps")
+                // Las celdas de reps ya no llevan la palabra "reps":
+                // el header de columna "REPS" ya transmite eso. Verificamos
+                // los valores como celda exacta <td>N</td> para no confundir
+                // con otros números que aparezcan en el HTML (como en "80 kg").
+                .contains("<td>6</td>")
                 .contains("80 kg")
-                .contains("8 reps")
+                .contains("<td>8</td>")
                 .contains("70 kg")
-                .contains("10 reps")
+                .contains("<td>10</td>")
                 .contains("60 kg");
 
         assertThat(html)

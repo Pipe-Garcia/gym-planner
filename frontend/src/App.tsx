@@ -12,7 +12,7 @@ import { EditStudentPage } from "@/pages/students/EditStudentPage"
 import { NewStudentPage } from "@/pages/students/NewStudentPage"
 import { StudentDetailPage } from "@/pages/students/StudentDetailPage"
 import { StudentsListPage } from "@/pages/students/StudentsListPage"
-import { RoutineDetailPage } from "@/pages/students/routines/RoutineDetailPage"
+import { RoutineViewPage } from "@/pages/students/routines/RoutineViewPage"
 import { NewRoutineWizardPage } from "@/pages/students/routines/NewRoutineWizardPage"
 import { RoutineEditorPage } from "@/pages/students/routines/RoutineEditorPage"
 import { TemplateDetailPage } from "@/pages/templates/TemplateDetailPage"
@@ -32,7 +32,7 @@ export function App() {
           <Route path="students/:id" element={<StudentDetailPage />} />
           <Route path="students/:id/edit" element={<EditStudentPage />} />
           <Route path="students/:studentId/routines/new" element={<NewRoutineWizardPage />} />
-          <Route path="students/:studentId/routines/:routineId" element={<RoutineDetailPage />} />
+          <Route path="students/:studentId/routines/:routineId" element={<RoutineViewPage />} />
           <Route path="students/:studentId/routines/:routineId/edit" element={<RoutineEditorPage />} />
           <Route path="routines" element={<RoutinesListPage />} />
           <Route path="exercises" element={<ExercisesListPage />} />

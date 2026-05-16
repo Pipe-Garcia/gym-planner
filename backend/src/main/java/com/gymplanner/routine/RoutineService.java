@@ -3,6 +3,7 @@ package com.gymplanner.routine;
 import com.gymplanner.exercise.ExerciseService;
 import com.gymplanner.routine.dto.CreateRoutineFromScratchRequest;
 import com.gymplanner.routine.dto.DuplicateRoutineRequest;
+import com.gymplanner.routine.dto.FinishRoutineRequest;
 import com.gymplanner.routine.dto.RoutineBlockInput;
 import com.gymplanner.routine.dto.RoutineDayInput;
 import com.gymplanner.routine.dto.RoutineExerciseInput;
@@ -17,9 +18,11 @@ import com.gymplanner.shared.exception.NotFoundException;
 import com.gymplanner.shared.pagination.PageResponse;
 import com.gymplanner.student.Student;
 import com.gymplanner.student.StudentService;
+import com.gymplanner.user.User;
 import com.gymplanner.user.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.Predicate;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,8 +56,8 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<RoutineSummaryResponse> list(Long gymId, String statusesCsv, String q, LocalDate dateFrom, LocalDate dateTo, Pageable pageable) {
-        Page<Routine> page = routineRepository.findAll(specification(gymId, parseStatusesOrAll(statusesCsv), q, dateFrom, dateTo), pageable);
+    public PageResponse<RoutineSummaryResponse> list(Long gymId, String statusesCsv, String q, LocalDate dateFrom, LocalDate dateTo, String sport, String level, Pageable pageable) {
+        Page<Routine> page = routineRepository.findAll(specification(gymId, parseStatusesOrAll(statusesCsv), q, dateFrom, dateTo, sport, level), pageable);
         return new PageResponse<>(page.map(r -> mapper.toSummary(r, routineRepository.countDays(r.getId()), routineRepository.countBlocks(r.getId()), routineRepository.countExercises(r.getId()))).getContent(), page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
@@ -73,10 +76,11 @@ public class RoutineService {
         Routine original = getFull(gymId, id);
         Student targetStudent = studentService.getEntity(gymId, request.targetStudentId());
         RoutineStatus newStatus = request.status() == null ? RoutineStatus.DRAFT : request.status();
+        User currentUser = userRepository.getReferenceById(userId);
 
         Routine copy = new Routine();
         copy.setStudent(targetStudent);
-        copy.setCreatedByUser(userRepository.getReferenceById(userId));
+        copy.setCreatedByUser(currentUser);
         copy.setSourceTemplate(original.getSourceTemplate());
         copy.setName(StringUtils.hasText(request.name()) ? request.name().trim() : original.getName() + " (copia)");
         copy.setObjective(clean(original.getObjective()));
@@ -87,7 +91,7 @@ public class RoutineService {
         copy.getDays().addAll(copyDays(original, copy));
 
         if (newStatus == RoutineStatus.ACTIVE) {
-            finishPreviousActive(gymId, targetStudent.getId());
+            finishPreviousActive(gymId, targetStudent.getId(), null, currentUser);
         }
         validator.validate(copy);
         return mapper.toResponse(routineRepository.save(copy));
@@ -96,9 +100,10 @@ public class RoutineService {
     @Transactional
     public RoutineResponse createFromScratch(Long gymId, Long userId, CreateRoutineFromScratchRequest request) {
         Student student = studentService.getEntity(gymId, request.studentId());
+        User currentUser = userRepository.getReferenceById(userId);
         Routine routine = new Routine();
         routine.setStudent(student);
-        routine.setCreatedByUser(userRepository.getReferenceById(userId));
+        routine.setCreatedByUser(currentUser);
         routine.setName(request.name().trim());
         routine.setObjective(clean(request.objective()));
         routine.setStatus(request.status() == null ? RoutineStatus.ACTIVE : request.status());
@@ -107,7 +112,7 @@ public class RoutineService {
         routine.setInternalNotes(clean(request.internalNotes()));
         routine.getDays().addAll(mapDays(gymId, request.days(), routine));
         if (routine.getStatus() == RoutineStatus.ACTIVE) {
-            finishPreviousActive(gymId, student.getId());
+            finishPreviousActive(gymId, student.getId(), null, currentUser);
         }
         validator.validate(routine);
         return mapper.toResponse(routineRepository.save(routine));
@@ -138,35 +143,49 @@ public class RoutineService {
     }
 
     @Transactional
-    public RoutineResponse finish(Long gymId, Long id) {
+    public RoutineResponse finishRoutine(Long gymId, Long userId, Long id, FinishRoutineRequest request) {
         Routine routine = getFull(gymId, id);
-        if (routine.getStatus() != RoutineStatus.ACTIVE) {
-            throw new BusinessRuleException("Solo se puede finalizar una rutina activa.");
+        if (routine.getStatus() == RoutineStatus.FINISHED || routine.getStatus() == RoutineStatus.ARCHIVED) {
+            throw new BusinessRuleException("Esta rutina ya está finalizada o archivada.");
         }
-        routine.setStatus(RoutineStatus.FINISHED);
-        routine.setFinishedDate(LocalDate.now());
+        if (routine.getStatus() != RoutineStatus.ACTIVE && routine.getStatus() != RoutineStatus.DRAFT) {
+            throw new BusinessRuleException("Solo se puede finalizar una rutina activa o borrador.");
+        }
+        finishRoutineEntity(routine, userRepository.getReferenceById(userId), Instant.now(), request == null ? null : request.closureNotes());
         return mapper.toResponse(routine);
     }
 
     @Transactional
-    public RoutineResponse archive(Long gymId, Long id) {
+    public RoutineResponse archiveRoutine(Long gymId, Long userId, Long id) {
         Routine routine = getFull(gymId, id);
-        if (routine.getStatus() != RoutineStatus.ACTIVE && routine.getStatus() != RoutineStatus.FINISHED) {
-            throw new BusinessRuleException("Solo se puede archivar una rutina activa o finalizada.");
+        if (routine.getStatus() == RoutineStatus.ARCHIVED) {
+            throw new BusinessRuleException("Ya está archivada.");
+        }
+        if (routine.getStatus() == RoutineStatus.DRAFT) {
+            throw new BusinessRuleException("No se puede archivar un borrador. Eliminalo.");
+        }
+        if (routine.getStatus() == RoutineStatus.ACTIVE) {
+            Instant now = Instant.now();
+            routine.setFinishedAt(routine.getFinishedAt() == null ? now : routine.getFinishedAt());
+            routine.setFinishedDate(routine.getFinishedDate() == null ? LocalDate.now() : routine.getFinishedDate());
+            if (routine.getFinishedByUser() == null) {
+                routine.setFinishedByUser(userRepository.getReferenceById(userId));
+            }
         }
         routine.setStatus(RoutineStatus.ARCHIVED);
         return mapper.toResponse(routine);
     }
 
     @Transactional
-    public RoutineResponse activate(Long gymId, Long id) {
+    public RoutineResponse activateRoutine(Long gymId, Long userId, Long id) {
         Routine routine = getFull(gymId, id);
         if (routine.getStatus() != RoutineStatus.DRAFT) {
-            throw new BusinessRuleException("Solo se puede activar una rutina borrador.");
+            throw new BusinessRuleException("Solo se puede activar una rutina en borrador.");
         }
+        User currentUser = userRepository.getReferenceById(userId);
         routine.setStatus(RoutineStatus.ACTIVE);
         validator.validate(routine);
-        finishPreviousActive(gymId, routine.getStudent().getId(), routine.getId());
+        finishPreviousActive(gymId, routine.getStudent().getId(), routine.getId(), currentUser);
         return mapper.toResponse(routine);
     }
 
@@ -174,7 +193,7 @@ public class RoutineService {
     public void delete(Long gymId, Long id) {
         Routine routine = getFull(gymId, id);
         if (routine.getStatus() != RoutineStatus.DRAFT) {
-            throw new BusinessRuleException("Solo se pueden eliminar rutinas borrador.");
+            throw new BusinessRuleException("Solo se pueden eliminar rutinas en borrador. Para finalizar o archivar, usá los endpoints correspondientes.");
         }
         routineRepository.delete(routine);
     }
@@ -189,15 +208,22 @@ public class RoutineService {
     }
 
     void finishPreviousActive(Long gymId, Long studentId) {
-        finishPreviousActive(gymId, studentId, null);
+        finishPreviousActive(gymId, studentId, null, null);
     }
 
     void finishPreviousActive(Long gymId, Long studentId, Long exceptRoutineId) {
+        finishPreviousActive(gymId, studentId, exceptRoutineId, null);
+    }
+
+    void finishPreviousActive(Long gymId, Long studentId, Long exceptRoutineId, User finishedByUser) {
+        Instant now = Instant.now();
         routineRepository.findFirstByStudentIdAndStudentGymIdAndStatus(studentId, gymId, RoutineStatus.ACTIVE)
                 .filter(r -> exceptRoutineId == null || !r.getId().equals(exceptRoutineId))
                 .ifPresent(r -> {
                     r.setStatus(RoutineStatus.FINISHED);
+                    r.setFinishedAt(now);
                     r.setFinishedDate(LocalDate.now());
+                    r.setFinishedByUser(finishedByUser);
                 });
     }
 
@@ -217,7 +243,7 @@ public class RoutineService {
         return days;
     }
 
-    private List<RoutineDay> copyDays(Routine original, Routine copy) {
+    List<RoutineDay> copyDays(Routine original, Routine copy) {
         return original.getDays().stream()
                 .map(originalDay -> {
                     RoutineDay day = new RoutineDay();
@@ -355,7 +381,7 @@ public class RoutineService {
         };
     }
 
-    private Specification<Routine> specification(Long gymId, List<RoutineStatus> statuses, String q, LocalDate dateFrom, LocalDate dateTo) {
+    private Specification<Routine> specification(Long gymId, List<RoutineStatus> statuses, String q, LocalDate dateFrom, LocalDate dateTo, String sport, String level) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(builder.equal(root.get("student").get("gym").get("id"), gymId));
@@ -369,6 +395,12 @@ public class RoutineService {
                         builder.like(builder.lower(root.get("student").get("firstName")), pattern),
                         builder.like(builder.lower(root.get("student").get("lastName")), pattern)
                 ));
+            }
+            if (StringUtils.hasText(sport)) {
+                predicates.add(builder.equal(builder.lower(root.get("student").get("sport")), sport.trim().toLowerCase()));
+            }
+            if (StringUtils.hasText(level)) {
+                predicates.add(builder.equal(builder.lower(root.get("student").get("level")), level.trim().toLowerCase()));
             }
             return builder.and(predicates.toArray(Predicate[]::new));
         };
@@ -386,5 +418,13 @@ public class RoutineService {
 
     private String clean(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    void finishRoutineEntity(Routine routine, User finishedByUser, Instant now, String closureNotes) {
+        routine.setStatus(RoutineStatus.FINISHED);
+        routine.setFinishedAt(now);
+        routine.setFinishedDate(LocalDate.now());
+        routine.setFinishedByUser(finishedByUser);
+        routine.setClosureNotes(clean(closureNotes));
     }
 }

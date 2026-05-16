@@ -161,37 +161,12 @@
     }
     .block-header {
       background: #F3F4F6;
-      padding: 6px 10px;
-    }
-    .block-title-row {
-      display: table;
-      width: 100%;
-    }
-    .block-title-side {
-      display: table-cell;
-      width: 90px;
+      padding: 7px 12px;
     }
     .block-title {
-      display: table-cell;
       font-size: 10pt;
       font-weight: bold;
       text-align: center;
-    }
-    .block-type {
-      text-align: right;
-      font-size: 8pt;
-      color: #666;
-    }
-    .block-type-badge {
-      background: white;
-      padding: 2px 6px;
-      border: 1px solid #E5E7EB;
-    }
-    .circuit-badge {
-      background: #FEF3C7;
-      color: #92400E;
-      padding: 2px 6px;
-      border: 1px solid #FDE68A;
     }
     .circuit-note {
       background: #FFFBEB;
@@ -297,13 +272,7 @@
 
       <div th:each="block : ${section.blocks}" class="block-card">
         <div class="block-header">
-          <div class="block-title-row">
-            <span class="block-title-side"></span>
-            <span class="block-title" th:text="${block.title}">Bloque</span>
-            <span class="block-title-side block-type">
-              <span th:if="${block.typeLabel != null and !#strings.isEmpty(#strings.trim(block.typeLabel))}" th:class="${block.isCircuit} ? 'circuit-badge' : 'block-type-badge'" th:text="${block.typeLabel}">Estándar</span>
-            </span>
-          </div>
+          <div class="block-title" th:text="${block.title}">Bloque</div>
         </div>
 
         <div th:if="${block.circuitNote != null and !#strings.isEmpty(#strings.trim(block.circuitNote))}" class="circuit-note" th:text="${block.circuitNote}">Rotar</div>

@@ -3,7 +3,12 @@ package com.gymplanner.routine;
 import com.gymplanner.auth.CustomUserDetailsService.GymPrincipal;
 import com.gymplanner.routine.dto.CreateRoutineFromScratchRequest;
 import com.gymplanner.routine.dto.CreateRoutineFromTemplateRequest;
+import com.gymplanner.routine.dto.CreateNextRoutineRequest;
+import com.gymplanner.routine.dto.CreateNextRoutineResponse;
 import com.gymplanner.routine.dto.DuplicateRoutineRequest;
+import com.gymplanner.routine.dto.FinishAndCreateNextRequest;
+import com.gymplanner.routine.dto.FinishAndCreateNextResponse;
+import com.gymplanner.routine.dto.FinishRoutineRequest;
 import com.gymplanner.routine.dto.RoutineResponse;
 import com.gymplanner.routine.dto.RoutineSummaryResponse;
 import com.gymplanner.routine.dto.UpdateRoutineRequest;
@@ -32,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RoutineController {
     private final RoutineService routineService;
     private final RoutineFromTemplateService routineFromTemplateService;
+    private final RoutineLifecycleService routineLifecycleService;
 
     @GetMapping("/api/students/{studentId}/routines")
     PageResponse<RoutineSummaryResponse> listForStudent(@AuthenticationPrincipal GymPrincipal principal, @PathVariable Long studentId, @RequestParam(required = false) String status, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size, @RequestParam(defaultValue = "assignedDate,desc") String sort) {
@@ -39,8 +45,19 @@ public class RoutineController {
     }
 
     @GetMapping("/api/routines")
-    PageResponse<RoutineSummaryResponse> list(@AuthenticationPrincipal GymPrincipal principal, @RequestParam(required = false) String status, @RequestParam(required = false) String q, @RequestParam(required = false) LocalDate dateFrom, @RequestParam(required = false) LocalDate dateTo, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size, @RequestParam(defaultValue = "assignedDate,desc") String sort) {
-        return routineService.list(principal.gymId(), status, q, dateFrom, dateTo, pageable(page, size, sort));
+    PageResponse<RoutineSummaryResponse> list(
+            @AuthenticationPrincipal GymPrincipal principal,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo,
+            @RequestParam(required = false) String sport,
+            @RequestParam(required = false) String level,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "assignedDate,desc") String sort
+    ) {
+        return routineService.list(principal.gymId(), status, q, dateFrom, dateTo, sport, level, pageable(page, size, sort));
     }
 
     @GetMapping("/api/students/{studentId}/routines/active")
@@ -77,18 +94,30 @@ public class RoutineController {
     }
 
     @PostMapping("/api/routines/{id}/finish")
-    RoutineResponse finish(@AuthenticationPrincipal GymPrincipal principal, @PathVariable Long id) {
-        return routineService.finish(principal.gymId(), id);
+    RoutineResponse finish(@AuthenticationPrincipal GymPrincipal principal, @PathVariable Long id, @RequestBody(required = false) FinishRoutineRequest request) {
+        return routineService.finishRoutine(principal.gymId(), principal.id(), id, request);
     }
 
     @PostMapping("/api/routines/{id}/archive")
     RoutineResponse archive(@AuthenticationPrincipal GymPrincipal principal, @PathVariable Long id) {
-        return routineService.archive(principal.gymId(), id);
+        return routineService.archiveRoutine(principal.gymId(), principal.id(), id);
     }
 
     @PostMapping("/api/routines/{id}/activate")
     RoutineResponse activate(@AuthenticationPrincipal GymPrincipal principal, @PathVariable Long id) {
-        return routineService.activate(principal.gymId(), id);
+        return routineService.activateRoutine(principal.gymId(), principal.id(), id);
+    }
+
+    @PostMapping("/api/routines/finish-and-create-next")
+    @ResponseStatus(HttpStatus.CREATED)
+    FinishAndCreateNextResponse finishAndCreateNext(@AuthenticationPrincipal GymPrincipal principal, @Valid @RequestBody FinishAndCreateNextRequest request) {
+        return routineLifecycleService.finishAndCreateNext(principal.gymId(), principal.id(), request);
+    }
+
+    @PostMapping("/api/routines/{id}/create-next")
+    @ResponseStatus(HttpStatus.CREATED)
+    CreateNextRoutineResponse createNext(@AuthenticationPrincipal GymPrincipal principal, @PathVariable Long id, @Valid @RequestBody CreateNextRoutineRequest request) {
+        return routineLifecycleService.createNextFromExisting(principal.gymId(), principal.id(), id, request);
     }
 
     @DeleteMapping("/api/routines/{id}")

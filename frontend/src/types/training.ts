@@ -118,6 +118,9 @@ export interface RoutineSummary {
   status: RoutineStatus
   assignedDate: string
   finishedDate?: string | null
+  finishedAt?: string | null
+  closureNotes?: string | null
+  previousRoutineId?: number | null
   dayCount: number
   blockCount: number
   exerciseCount: number
@@ -132,7 +135,38 @@ export interface Routine extends RoutineSummary {
   days: TrainingDay[]
 }
 
+export type RoutineResponse = Routine
+export type RoutineSummaryResponse = RoutineSummary
+
+export interface FinishAndCreateNextInput {
+  routineId: number
+  closureNotes?: string
+  newRoutineName?: string
+  newAssignedDate: string
+  newStatus: "DRAFT" | "ACTIVE"
+  copyGeneralNotes: boolean
+  copyInternalNotes: boolean
+  weightAdjustment?: {
+    percentage: number
+    roundingStepKg?: number
+  }
+}
+
+export interface FinishAndCreateNextResponse {
+  finishedRoutine: RoutineSummaryResponse
+  newRoutine: RoutineResponse
+  weightSetsAdjusted: number
+}
+
+export type CreateNextRoutineInput = Omit<FinishAndCreateNextInput, "routineId" | "closureNotes">
+
+export interface CreateNextRoutineResponse {
+  sourceRoutine: RoutineSummaryResponse
+  newRoutine: RoutineResponse
+  weightSetsAdjusted: number
+}
+
 export interface TemplateListParams { search?: string; sport?: string; objective?: string; level?: string; active?: boolean; page?: number; size?: number; sort?: string }
-export interface RoutineListParams { status?: string; q?: string; dateFrom?: string; dateTo?: string; page?: number; size?: number; sort?: string }
+export interface RoutineListParams { status?: string; q?: string; dateFrom?: string; dateTo?: string; sport?: string; level?: string; page?: number; size?: number; sort?: string }
 export type TemplatePage = PageResponse<TemplateSummary>
 export type RoutinePage = PageResponse<RoutineSummary>

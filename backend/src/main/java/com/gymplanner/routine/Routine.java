@@ -21,11 +21,14 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Getter
 @Setter
@@ -66,11 +69,26 @@ public class Routine extends AuditableEntity {
     @Column(name = "finished_date")
     private LocalDate finishedDate;
 
+    @Column(name = "finished_at")
+    private Instant finishedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "finished_by_user_id")
+    private User finishedByUser;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "previous_routine_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    private Routine previousRoutine;
+
     @Column(name = "general_notes", columnDefinition = "TEXT")
     private String generalNotes;
 
     @Column(name = "internal_notes", columnDefinition = "TEXT")
     private String internalNotes;
+
+    @Column(name = "closure_notes", columnDefinition = "TEXT")
+    private String closureNotes;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

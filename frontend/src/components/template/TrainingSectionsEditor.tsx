@@ -12,7 +12,7 @@ const MAIN_PURPOSES = ["MAIN_LIFT", "ACCESSORY", "CONDITIONING", "CORE", "OTHER"
 const COOLDOWN_PURPOSES = ["COOLDOWN"] as const
 
 type SectionKey = SectionGroup
-type SectionItem = { idx: number; block: DayInput["blocks"][number] }
+type SectionItem = { idx: number; block: DayInput["blocks"][number]; fieldId: string }
 
 function sectionOf(purpose: BlockPurpose | null): SectionKey | null {
   if (!purpose) return null
@@ -22,18 +22,39 @@ function sectionOf(purpose: BlockPurpose | null): SectionKey | null {
   return null
 }
 
-export function TrainingSectionsEditor({ dayIndex, context = "template", disabled = false }: { dayIndex: number; context?: "template" | "routine"; disabled?: boolean }) {
+export function TrainingSectionsEditor({
+  dayIndex,
+  context = "template",
+  disabled = false,
+}: {
+  dayIndex: number
+  context?: "template" | "routine"
+  disabled?: boolean
+}) {
   const { control } = useFormContext()
   const blocksPath = `days.${dayIndex}.blocks`
-  const blocks = useFieldArray({ control, name: blocksPath })
+  const blocks = useFieldArray({ control, name: blocksPath, keyName: "_fieldId" })
   const watched = (useWatch({ control, name: blocksPath }) ?? []) as DayInput["blocks"]
-  const indexed = watched.map((block, idx) => ({ block, idx }))
+
+  // Combinamos los valores observados con los ids estables del useFieldArray.
+  // Usamos blocks.fields como fuente de verdad: si watched tiene desfase
+  // momentáneo, blocks.fields siempre refleja la estructura actual.
+  const indexed: SectionItem[] = blocks.fields.map((field, idx) => ({
+    idx,
+    block: (watched[idx] ?? {}) as DayInput["blocks"][number],
+    fieldId: (field as unknown as { _fieldId: string })._fieldId,
+  }))
+
   const warmup = indexed.filter(({ block }) => sectionOf(block.purpose) === "warmup")
   const main = indexed.filter(({ block }) => sectionOf(block.purpose) === "main")
   const cooldown = indexed.filter(({ block }) => sectionOf(block.purpose) === "cooldown")
 
   function addBlock(defaultPurpose: BlockPurpose) {
-    blocks.append({ ...emptyBlock(blocks.fields.length + 1), title: "", purpose: defaultPurpose })
+    blocks.append({
+      ...emptyBlock(blocks.fields.length + 1),
+      title: "",
+      purpose: defaultPurpose,
+    })
   }
 
   function moveUpInSection(globalIdx: number, sectionItems: SectionItem[]) {
@@ -43,14 +64,61 @@ export function TrainingSectionsEditor({ dayIndex, context = "template", disable
 
   function moveDownInSection(globalIdx: number, sectionItems: SectionItem[]) {
     const position = sectionItems.findIndex((item) => item.idx === globalIdx)
-    if (position >= 0 && position < sectionItems.length - 1) blocks.swap(globalIdx, sectionItems[position + 1].idx)
+    if (position >= 0 && position < sectionItems.length - 1) {
+      blocks.swap(globalIdx, sectionItems[position + 1].idx)
+    }
   }
 
   return (
     <div className="space-y-4">
-      <SectionPanel group="warmup" icon="flame" title="Calentamiento" emptyHint="Sin bloques de calentamiento. Agrega al menos uno." sectionItems={warmup} totalBlocks={blocks.fields.length} onAdd={() => addBlock("ACTIVATION")} addLabel="Agregar bloque de calentamiento" moveUp={moveUpInSection} moveDown={moveDownInSection} removeAt={blocks.remove} disabled={disabled} context={context} blocksPath={blocksPath} />
-      <SectionPanel group="main" icon="target" title="Parte principal" emptyHint="Sin bloques en la parte principal. Agrega al menos uno." sectionItems={main} totalBlocks={blocks.fields.length} onAdd={() => addBlock("MAIN_LIFT")} addLabel="Agregar bloque a parte principal" moveUp={moveUpInSection} moveDown={moveDownInSection} removeAt={blocks.remove} disabled={disabled} context={context} blocksPath={blocksPath} />
-      <SectionPanel group="cooldown" icon="wind" title="Vuelta a la calma" emptyHint="Sin bloques de vuelta a la calma. Agrega al menos uno." sectionItems={cooldown} totalBlocks={blocks.fields.length} onAdd={() => addBlock("COOLDOWN")} addLabel="Agregar bloque de vuelta a la calma" moveUp={moveUpInSection} moveDown={moveDownInSection} removeAt={blocks.remove} disabled={disabled} context={context} blocksPath={blocksPath} />
+      <SectionPanel
+        group="warmup"
+        icon="flame"
+        title="Calentamiento"
+        emptyHint="Sin bloques de calentamiento. Agregá al menos uno."
+        sectionItems={warmup}
+        totalBlocks={blocks.fields.length}
+        onAdd={() => addBlock("ACTIVATION")}
+        addLabel="Agregar bloque de calentamiento"
+        moveUp={moveUpInSection}
+        moveDown={moveDownInSection}
+        removeAt={blocks.remove}
+        disabled={disabled}
+        context={context}
+        blocksPath={blocksPath}
+      />
+      <SectionPanel
+        group="main"
+        icon="target"
+        title="Parte principal"
+        emptyHint="Sin bloques en la parte principal. Agregá al menos uno."
+        sectionItems={main}
+        totalBlocks={blocks.fields.length}
+        onAdd={() => addBlock("MAIN_LIFT")}
+        addLabel="Agregar bloque a parte principal"
+        moveUp={moveUpInSection}
+        moveDown={moveDownInSection}
+        removeAt={blocks.remove}
+        disabled={disabled}
+        context={context}
+        blocksPath={blocksPath}
+      />
+      <SectionPanel
+        group="cooldown"
+        icon="wind"
+        title="Vuelta a la calma"
+        emptyHint="Sin bloques de vuelta a la calma. Agregá al menos uno."
+        sectionItems={cooldown}
+        totalBlocks={blocks.fields.length}
+        onAdd={() => addBlock("COOLDOWN")}
+        addLabel="Agregar bloque de vuelta a la calma"
+        moveUp={moveUpInSection}
+        moveDown={moveDownInSection}
+        removeAt={blocks.remove}
+        disabled={disabled}
+        context={context}
+        blocksPath={blocksPath}
+      />
     </div>
   )
 }
@@ -91,7 +159,12 @@ function SectionPanel({
     <section className={cn("rounded-md border p-4", sectionStyleByGroup(group))}>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className={cn("flex h-10 w-10 items-center justify-center rounded-md", sectionIconStyleByGroup(group))}>
+          <span
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-md",
+              sectionIconStyleByGroup(group)
+            )}
+          >
             <Icon className="h-5 w-5" />
           </span>
           <h2 className="font-semibold">{title}</h2>
@@ -102,10 +175,14 @@ function SectionPanel({
         </Button>
       </div>
       <div className="space-y-4">
-        {sectionItems.length === 0 ? <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">{emptyHint}</div> : null}
+        {sectionItems.length === 0 ? (
+          <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            {emptyHint}
+          </div>
+        ) : null}
         {sectionItems.map((item, position) => (
           <BlockEditor
-            key={item.idx}
+            key={item.fieldId}
             blockIndex={item.idx}
             blockPath={`${blocksPath}.${item.idx}`}
             blocksLength={totalBlocks}

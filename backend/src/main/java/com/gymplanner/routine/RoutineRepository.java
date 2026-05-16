@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 public interface RoutineRepository extends JpaRepository<Routine, Long>, JpaSpecificationExecutor<Routine> {
     Optional<Routine> findByIdAndStudentGymId(Long id, Long gymId);
     Optional<Routine> findFirstByStudentIdAndStudentGymIdAndStatus(Long studentId, Long gymId, RoutineStatus status);
+    java.util.List<Routine> findByStudentIdAndStudentGymId(Long studentId, Long gymId);
 
     @Query("""
             SELECT DISTINCT r FROM Routine r
