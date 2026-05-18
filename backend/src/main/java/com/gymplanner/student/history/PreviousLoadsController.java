@@ -1,6 +1,7 @@
 package com.gymplanner.student.history;
 
 import com.gymplanner.auth.CustomUserDetailsService.GymPrincipal;
+import com.gymplanner.shared.blocks.BlockStructuralType;
 import com.gymplanner.student.history.dto.PreviousLoadsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,7 +23,7 @@ public class PreviousLoadsController {
 
     @GetMapping("/api/students/{studentId}/exercises/{exerciseId}/previous-loads")
     @Operation(summary = "Consulta cargas previas de un ejercicio para un alumno",
-            description = "Devuelve las ultimas apariciones no-borrador de un ejercicio en rutinas del alumno autenticado por gym.")
+            description = "Devuelve las ultimas apariciones no-borrador de un ejercicio en rutinas del alumno autenticado por gym. Permite filtrar por tipo estructural de bloque.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Historial encontrado o respuesta vacia",
                     content = @Content(examples = @ExampleObject(value = """
@@ -72,8 +73,12 @@ public class PreviousLoadsController {
             @PathVariable Long exerciseId,
             @Parameter(description = "Rutina a excluir de la busqueda para evitar autorreferencias")
             @RequestParam(required = false) Long excludeRoutineId,
+            @Parameter(description = "Tipo estructural de bloque a usar como filtro opcional")
+            @RequestParam(required = false) BlockStructuralType structuralType,
+            @Parameter(description = "Si no hay coincidencia exacta por tipo estructural, busca la ultima referencia disponible del ejercicio")
+            @RequestParam(defaultValue = "false") boolean includeFallback,
             @Parameter(description = "Cantidad de apariciones a devolver. Default 1, maximo 3.")
             @RequestParam(required = false) Integer limit) {
-        return previousLoadsService.getPreviousLoads(principal.gymId(), studentId, exerciseId, excludeRoutineId, limit);
+        return previousLoadsService.getPreviousLoads(principal.gymId(), studentId, exerciseId, excludeRoutineId, structuralType, includeFallback, limit);
     }
 }

@@ -24,9 +24,11 @@ interface Props {
   disableUp?: boolean
   disableDown?: boolean
   context?: "template" | "routine"
+  studentId?: number
+  excludeRoutineId?: number | null
 }
 
-export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onMoveUp, onMoveDown, disabled, disableUp, disableDown, context = "template" }: Props) {
+export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onMoveUp, onMoveDown, disabled, disableUp, disableDown, context = "template", studentId, excludeRoutineId }: Props) {
   const { control, register, setValue } = useFormContext()
   const [pickerOpen, setPickerOpen] = useState(false)
   const exercises = useFieldArray({ control, name: `${blockPath}.exercises` })
@@ -112,6 +114,9 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
                   onMoveDown={() => exerciseIndex < exercises.fields.length - 1 && exercises.swap(exerciseIndex, exerciseIndex + 1)}
                   disabled={disabled}
                   context={context}
+                  studentId={studentId}
+                  excludeRoutineId={excludeRoutineId}
+                  structuralType={structuralType}
                 />
               ))}
               <Button type="button" variant="outline" disabled={disabled} onClick={() => setPickerOpen(true)}>

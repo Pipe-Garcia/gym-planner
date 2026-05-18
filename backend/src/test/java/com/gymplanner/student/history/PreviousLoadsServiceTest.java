@@ -28,6 +28,9 @@ import com.gymplanner.student.history.dto.PreviousLoadsResponse;
 import com.gymplanner.student.injury.InjurySeverity;
 import com.gymplanner.student.injury.StudentInjury;
 import com.gymplanner.student.injury.StudentInjuryRepository;
+import com.gymplanner.student.note.StudentNote;
+import com.gymplanner.student.note.StudentNoteRepository;
+import com.gymplanner.user.UserRepository;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -49,6 +52,8 @@ class PreviousLoadsServiceTest {
     @Autowired RoutineService routineService;
     @Autowired RoutineRepository routineRepository;
     @Autowired StudentInjuryRepository injuryRepository;
+    @Autowired StudentNoteRepository noteRepository;
+    @Autowired UserRepository userRepository;
     @Autowired EntityManager entityManager;
     @Autowired ObjectMapper objectMapper;
 
@@ -139,6 +144,187 @@ class PreviousLoadsServiceTest {
     }
 
     @Test
+    void returnsPreviousLoadsFilteredByStructuralType() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Standard", RoutineStatus.FINISHED, LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 5, 1), null, null, BlockStructuralType.STANDARD,
+                BlockPurpose.MAIN_LIFT, List.of(set(10, "45", 60)));
+        Long pyramid = createRoutine(fixture, "Pyramid", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.PYRAMID,
+                BlockPurpose.MAIN_LIFT, List.of(set(12, "30", 90), set(10, "35", 90)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.PYRAMID, 3);
+
+        assertThat(response.found()).isTrue();
+        assertThat(response.occurrences()).extracting("routineId").containsExactly(pyramid);
+        assertThat(response.occurrences().getFirst().blockStructuralType()).isEqualTo(BlockStructuralType.PYRAMID);
+    }
+
+    @Test
+    void returnsFoundFalseWhenNoPreviousLoadMatchesStructuralType() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Standard", RoutineStatus.FINISHED, LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 5, 1), null, null, BlockStructuralType.STANDARD,
+                BlockPurpose.MAIN_LIFT, List.of(set(10, "45", 60)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.PYRAMID, 3);
+
+        assertThat(response.found()).isFalse();
+        assertThat(response.occurrences()).isEmpty();
+    }
+
+    @Test
+    void keepsBackwardCompatibilityWithoutStructuralType() {
+        Fixture fixture = fixture();
+        Long standard = createRoutine(fixture, "Standard", RoutineStatus.FINISHED, LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 5, 1), null, null, BlockStructuralType.STANDARD,
+                BlockPurpose.MAIN_LIFT, List.of(set(10, "45", 60)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, 1);
+
+        assertThat(response.found()).isTrue();
+        assertThat(response.occurrences()).extracting("routineId").containsExactly(standard);
+    }
+
+    @Test
+    void excludeRoutineIdStillWorksWithStructuralType() {
+        Fixture fixture = fixture();
+        Long routineId = createRoutine(fixture, "Pyramid", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.PYRAMID,
+                BlockPurpose.MAIN_LIFT, List.of(set(12, "30", 90), set(10, "35", 90)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), routineId, BlockStructuralType.PYRAMID, 3);
+
+        assertThat(response.found()).isFalse();
+        assertThat(response.occurrences()).isEmpty();
+    }
+
+    @Test
+    void limitStillWorksWithStructuralType() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Pyramid 1", RoutineStatus.FINISHED, LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 4, 1), null, null, BlockStructuralType.PYRAMID,
+                BlockPurpose.MAIN_LIFT, List.of(set(12, "30", 90)));
+        createRoutine(fixture, "Pyramid 2", RoutineStatus.FINISHED, LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 5, 1), null, null, BlockStructuralType.PYRAMID,
+                BlockPurpose.MAIN_LIFT, List.of(set(10, "35", 90)));
+        createRoutine(fixture, "Pyramid 3", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.PYRAMID,
+                BlockPurpose.MAIN_LIFT, List.of(set(8, "40", 90)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.PYRAMID, 2);
+
+        assertThat(response.occurrences()).hasSize(2);
+        assertThat(response.occurrences()).allSatisfy(occurrence ->
+                assertThat(occurrence.blockStructuralType()).isEqualTo(BlockStructuralType.PYRAMID));
+    }
+
+    @Test
+    void returnsSameStructuralTypeWhenAvailable() {
+        Fixture fixture = fixture();
+        Long standard = createRoutine(fixture, "Standard", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.STANDARD,
+                BlockPurpose.MAIN_LIFT, List.of(set(10, "45", 60)));
+        createRoutine(fixture, "Circuit", RoutineStatus.FINISHED, LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 7, 1), null, null, BlockStructuralType.CIRCUIT,
+                BlockPurpose.CONDITIONING, List.of(set(12, "20", 30)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.STANDARD, true, 1);
+
+        assertThat(response.found()).isTrue();
+        assertThat(response.matchType()).isEqualTo(PreviousLoadsMatchType.SAME_STRUCTURAL_TYPE);
+        assertThat(response.requestedStructuralType()).isEqualTo(BlockStructuralType.STANDARD);
+        assertThat(response.occurrences()).extracting("routineId").containsExactly(standard);
+        assertThat(response.occurrences().getFirst().blockStructuralType()).isEqualTo(BlockStructuralType.STANDARD);
+    }
+
+    @Test
+    void returnsFallbackWhenNoSameStructuralTypeExists() {
+        Fixture fixture = fixture();
+        Long circuit = createRoutine(fixture, "Circuit", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.CIRCUIT,
+                BlockPurpose.CONDITIONING, List.of(set(12, "20", 30)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.STANDARD, true, 1);
+
+        assertThat(response.found()).isTrue();
+        assertThat(response.matchType()).isEqualTo(PreviousLoadsMatchType.DIFFERENT_STRUCTURAL_TYPE);
+        assertThat(response.requestedStructuralType()).isEqualTo(BlockStructuralType.STANDARD);
+        assertThat(response.occurrences()).extracting("routineId").containsExactly(circuit);
+        assertThat(response.occurrences().getFirst().blockStructuralType()).isEqualTo(BlockStructuralType.CIRCUIT);
+    }
+
+    @Test
+    void doesNotFallbackWhenIncludeFallbackIsFalse() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Circuit", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.CIRCUIT,
+                BlockPurpose.CONDITIONING, List.of(set(12, "20", 30)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.STANDARD, false, 1);
+
+        assertThat(response.found()).isFalse();
+        assertThat(response.matchType()).isEqualTo(PreviousLoadsMatchType.NONE);
+        assertThat(response.requestedStructuralType()).isEqualTo(BlockStructuralType.STANDARD);
+        assertThat(response.occurrences()).isEmpty();
+    }
+
+    @Test
+    void returnsNoneWhenExerciseHasNoHistoryAtAll() {
+        Fixture fixture = fixture();
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.STANDARD, true, 1);
+
+        assertThat(response.found()).isFalse();
+        assertThat(response.matchType()).isEqualTo(PreviousLoadsMatchType.NONE);
+        assertThat(response.requestedStructuralType()).isEqualTo(BlockStructuralType.STANDARD);
+        assertThat(response.occurrences()).isEmpty();
+    }
+
+    @Test
+    void excludeRoutineIdAppliesToFallbackSearch() {
+        Fixture fixture = fixture();
+        Long circuit = createRoutine(fixture, "Circuit", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.CIRCUIT,
+                BlockPurpose.CONDITIONING, List.of(set(12, "20", 30)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), circuit, BlockStructuralType.STANDARD, true, 1);
+
+        assertThat(response.found()).isFalse();
+        assertThat(response.matchType()).isEqualTo(PreviousLoadsMatchType.NONE);
+        assertThat(response.occurrences()).isEmpty();
+    }
+
+    @Test
+    void limitAppliesToFallbackSearch() {
+        Fixture fixture = fixture();
+        Long older = createRoutine(fixture, "Circuit old", RoutineStatus.FINISHED, LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 5, 1), null, null, BlockStructuralType.CIRCUIT,
+                BlockPurpose.CONDITIONING, List.of(set(12, "20", 30)));
+        Long latest = createRoutine(fixture, "Circuit latest", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.CIRCUIT,
+                BlockPurpose.CONDITIONING, List.of(set(10, "25", 30)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.STANDARD, true, 1);
+
+        assertThat(response.matchType()).isEqualTo(PreviousLoadsMatchType.DIFFERENT_STRUCTURAL_TYPE);
+        assertThat(response.occurrences()).hasSize(1);
+        assertThat(response.occurrences()).extracting("routineId").containsExactly(latest);
+        assertThat(response.occurrences()).extracting("routineId").doesNotContain(older);
+    }
+
+    @Test
     void returnsFoundFalseWhenNoData() {
         Fixture fixture = fixture();
 
@@ -223,6 +409,18 @@ class PreviousLoadsServiceTest {
                 1L, fixture.studentId(), fixture.exerciseId(), null, 1));
 
         assertThat(json).doesNotContain("Rodilla", "Dolor patelar sensible");
+    }
+
+    @Test
+    void doesNotExposeStudentNotes() throws Exception {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Rutina visible", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 1));
+        addStudentNote(fixture.studentId(), "Dato privado del profesor");
+
+        String json = objectMapper.writeValueAsString(previousLoadsService.getPreviousLoads(
+                1L, fixture.studentId(), fixture.exerciseId(), null, BlockStructuralType.REVERSE_PYRAMID, 1));
+
+        assertThat(json).doesNotContain("Dato privado del profesor");
     }
 
     @Test
@@ -371,6 +569,15 @@ class PreviousLoadsServiceTest {
         injury.setSeverity(InjurySeverity.MODERADA);
         injury.setActive(true);
         injuryRepository.save(injury);
+    }
+
+    private void addStudentNote(Long studentId, String content) {
+        Student student = studentRepository.findById(studentId).orElseThrow();
+        StudentNote note = new StudentNote();
+        note.setStudent(student);
+        note.setAuthorUser(userRepository.getReferenceById(1L));
+        note.setContent(content);
+        noteRepository.save(note);
     }
 
     private Long otherGymId() {

@@ -45,8 +45,11 @@ export function BlockTypeSelector({ name, disabled }: { name: string; disabled?:
               <Info className="h-4 w-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left" className="max-w-xs">
-            <p className="text-xs">{descriptions[selected]}</p>
+          <TooltipContent
+            side="left"
+            className="w-[280px] max-w-[calc(100vw-2rem)] whitespace-normal text-sm leading-relaxed"
+          >
+            <p>{descriptions[selected]}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

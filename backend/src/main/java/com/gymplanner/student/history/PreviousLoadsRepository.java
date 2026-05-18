@@ -2,6 +2,7 @@ package com.gymplanner.student.history;
 
 import com.gymplanner.routine.RoutineExercise;
 import com.gymplanner.routine.RoutineStatus;
+import com.gymplanner.shared.blocks.BlockStructuralType;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,7 @@ public interface PreviousLoadsRepository extends JpaRepository<RoutineExercise, 
               AND re.exercise.id = :exerciseId
               AND r.status IN :statuses
               AND (:excludeRoutineId IS NULL OR r.id <> :excludeRoutineId)
+              AND (:structuralType IS NULL OR b.structuralType = :structuralType)
             ORDER BY COALESCE(r.finishedDate, r.assignedDate) DESC, r.id DESC
             """)
     List<Long> findPreviousRoutineExerciseIds(
@@ -29,6 +31,7 @@ public interface PreviousLoadsRepository extends JpaRepository<RoutineExercise, 
             @Param("studentId") Long studentId,
             @Param("exerciseId") Long exerciseId,
             @Param("excludeRoutineId") Long excludeRoutineId,
+            @Param("structuralType") BlockStructuralType structuralType,
             @Param("statuses") Collection<RoutineStatus> statuses,
             Pageable pageable);
 

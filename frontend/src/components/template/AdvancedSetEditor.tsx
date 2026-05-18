@@ -53,7 +53,7 @@ export function AdvancedSetEditor({ name, setsField, measurement, context, disab
         disabled={disabled}
         onClick={() => setsField.append(emptySet(setsField.fields.length + 1))}
       >
-        + agregar set
+        + agregar serie
       </Button>
     </div>
   )
@@ -88,7 +88,7 @@ function SetEditorRow({
   return (
     <div className="rounded-md border bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-medium">Set {index + 1}</p>
+        <p className="font-medium">Serie {index + 1}</p>
 
         <Button
           type="button"
@@ -96,7 +96,7 @@ function SetEditorRow({
           variant="ghost"
           disabled={disabled}
           onClick={onRemove}
-          aria-label={`Eliminar set ${index + 1}`}
+          aria-label={`Eliminar serie ${index + 1}`}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

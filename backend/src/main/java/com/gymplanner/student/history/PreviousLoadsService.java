@@ -8,6 +8,7 @@ import com.gymplanner.routine.RoutineDay;
 import com.gymplanner.routine.RoutineExercise;
 import com.gymplanner.routine.RoutineExerciseSet;
 import com.gymplanner.routine.RoutineStatus;
+import com.gymplanner.shared.blocks.BlockStructuralType;
 import com.gymplanner.shared.exception.NotFoundException;
 import com.gymplanner.student.StudentRepository;
 import com.gymplanner.student.history.dto.PreviousLoadOccurrence;
@@ -41,21 +42,36 @@ public class PreviousLoadsService {
 
     @Transactional(readOnly = true)
     public PreviousLoadsResponse getPreviousLoads(Long gymId, Long studentId, Long exerciseId, Long excludeRoutineId, Integer limit) {
+        return getPreviousLoads(gymId, studentId, exerciseId, excludeRoutineId, null, false, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public PreviousLoadsResponse getPreviousLoads(Long gymId, Long studentId, Long exerciseId, Long excludeRoutineId, BlockStructuralType structuralType, Integer limit) {
+        return getPreviousLoads(gymId, studentId, exerciseId, excludeRoutineId, structuralType, false, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public PreviousLoadsResponse getPreviousLoads(Long gymId, Long studentId, Long exerciseId, Long excludeRoutineId, BlockStructuralType structuralType, boolean includeFallback, Integer limit) {
         studentRepository.findByIdAndGymId(studentId, gymId)
                 .orElseThrow(() -> new NotFoundException("Alumno no encontrado"));
         Exercise exercise = exerciseRepository.findByIdAndGymId(exerciseId, gymId)
                 .orElseThrow(() -> new NotFoundException("Ejercicio no encontrado"));
 
-        List<Long> ids = previousLoadsRepository.findPreviousRoutineExerciseIds(
-                gymId,
-                studentId,
-                exerciseId,
-                excludeRoutineId,
-                INCLUDED_STATUSES,
-                PageRequest.of(0, normalizedLimit(limit)));
+        int normalizedLimit = normalizedLimit(limit);
+        List<Long> ids = findIds(gymId, studentId, exerciseId, excludeRoutineId, structuralType, normalizedLimit);
+        PreviousLoadsMatchType matchType = ids.isEmpty()
+                ? PreviousLoadsMatchType.NONE
+                : PreviousLoadsMatchType.SAME_STRUCTURAL_TYPE;
+
+        if (ids.isEmpty() && structuralType != null && includeFallback) {
+            ids = findIds(gymId, studentId, exerciseId, excludeRoutineId, null, normalizedLimit);
+            matchType = ids.isEmpty()
+                    ? PreviousLoadsMatchType.NONE
+                    : PreviousLoadsMatchType.DIFFERENT_STRUCTURAL_TYPE;
+        }
 
         if (ids.isEmpty()) {
-            return new PreviousLoadsResponse(exercise.getId(), exercise.getName(), false, List.of());
+            return new PreviousLoadsResponse(exercise.getId(), exercise.getName(), false, PreviousLoadsMatchType.NONE, structuralType, List.of());
         }
 
         Map<Long, RoutineExercise> byId = previousLoadsRepository.findByIdsWithSets(ids).stream()
@@ -66,7 +82,21 @@ public class PreviousLoadsService {
                 .map(this::toOccurrence)
                 .toList();
 
-        return new PreviousLoadsResponse(exercise.getId(), exercise.getName(), !occurrences.isEmpty(), occurrences);
+        return new PreviousLoadsResponse(exercise.getId(), exercise.getName(), !occurrences.isEmpty(),
+                occurrences.isEmpty() ? PreviousLoadsMatchType.NONE : matchType,
+                structuralType,
+                occurrences);
+    }
+
+    private List<Long> findIds(Long gymId, Long studentId, Long exerciseId, Long excludeRoutineId, BlockStructuralType structuralType, int limit) {
+        return previousLoadsRepository.findPreviousRoutineExerciseIds(
+                gymId,
+                studentId,
+                exerciseId,
+                excludeRoutineId,
+                structuralType,
+                INCLUDED_STATUSES,
+                PageRequest.of(0, limit));
     }
 
     private int normalizedLimit(Integer limit) {

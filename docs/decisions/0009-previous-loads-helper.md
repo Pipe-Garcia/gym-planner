@@ -18,11 +18,14 @@ porque no tienen alumno asociado.
 ## Alcance
 - Backend: GET /api/students/{studentId}/exercises/{exerciseId}/previous-loads
 - Lectura pura, sin cambios de schema, sin migraciones.
-- Soporta limit (default 1, max 3) y excludeRoutineId.
+- Soporta limit (default 1, max 3), excludeRoutineId, structuralType opcional e includeFallback opcional.
 
 ## Reglas
 - Excluye routines en estado DRAFT.
 - Excluye la routine actual cuando excludeRoutineId esta presente.
+- Si structuralType esta presente, trae solo apariciones del mismo tipo estructural de bloque.
+- Si includeFallback=true y no hay coincidencia exacta por structuralType, trae la ultima referencia disponible del mismo ejercicio y marca matchType=DIFFERENT_STRUCTURAL_TYPE.
+- La respuesta marca matchType como SAME_STRUCTURAL_TYPE, DIFFERENT_STRUCTURAL_TYPE o NONE. Sin structuralType, una coincidencia general se marca como SAME_STRUCTURAL_TYPE con requestedStructuralType=null para mantener el enum simple.
 - Multi-tenancy estricto: filtra por gymId del usuario autenticado.
 - No expone internalNotes, closureNotes, lesiones ni studentNotes.
 - Compara por exerciseId (no por nombre).

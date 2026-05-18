@@ -137,6 +137,43 @@ class PreviousLoadsControllerTest {
                 .andExpect(jsonPath("$.occurrences[0].routineId").value(older));
     }
 
+    @Test
+    void acceptsStructuralTypeQueryParam() throws Exception {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Standard", LocalDate.of(2026, 5, 1), BlockStructuralType.STANDARD);
+        Long pyramid = createRoutine(fixture, "Pyramid", LocalDate.of(2026, 6, 1), BlockStructuralType.PYRAMID);
+
+        mockMvc.perform(get("/api/students/{studentId}/exercises/{exerciseId}/previous-loads",
+                        fixture.studentId(), fixture.exerciseId())
+                        .queryParam("limit", "3")
+                        .queryParam("structuralType", "PYRAMID")
+                        .with(user(principal())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.found").value(true))
+                .andExpect(jsonPath("$.occurrences.length()").value(1))
+                .andExpect(jsonPath("$.occurrences[0].routineId").value(pyramid))
+                .andExpect(jsonPath("$.occurrences[0].blockStructuralType").value("PYRAMID"));
+    }
+
+    @Test
+    void acceptsIncludeFallbackQueryParam() throws Exception {
+        Fixture fixture = fixture();
+        Long circuit = createRoutine(fixture, "Circuit", LocalDate.of(2026, 6, 1), BlockStructuralType.CIRCUIT);
+
+        mockMvc.perform(get("/api/students/{studentId}/exercises/{exerciseId}/previous-loads",
+                        fixture.studentId(), fixture.exerciseId())
+                        .queryParam("limit", "1")
+                        .queryParam("structuralType", "STANDARD")
+                        .queryParam("includeFallback", "true")
+                        .with(user(principal())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.found").value(true))
+                .andExpect(jsonPath("$.matchType").value("DIFFERENT_STRUCTURAL_TYPE"))
+                .andExpect(jsonPath("$.requestedStructuralType").value("STANDARD"))
+                .andExpect(jsonPath("$.occurrences[0].routineId").value(circuit))
+                .andExpect(jsonPath("$.occurrences[0].blockStructuralType").value("CIRCUIT"));
+    }
+
     private Fixture fixture() {
         return new Fixture(
                 createStudent(1L),
@@ -171,6 +208,10 @@ class PreviousLoadsControllerTest {
     }
 
     private Long createRoutine(Fixture fixture, String name, LocalDate finishedDate) {
+        return createRoutine(fixture, name, finishedDate, BlockStructuralType.STANDARD);
+    }
+
+    private Long createRoutine(Fixture fixture, String name, LocalDate finishedDate, BlockStructuralType structuralType) {
         Long routineId = routineService.createFromScratch(1L, 1L, new CreateRoutineFromScratchRequest(
                 fixture.studentId(),
                 name,
@@ -179,22 +220,23 @@ class PreviousLoadsControllerTest {
                 finishedDate.minusWeeks(4),
                 null,
                 "Privado",
-                List.of(day(fixture.exerciseId(), fixture.fillerExerciseId())))).id();
+                List.of(day(fixture.exerciseId(), fixture.fillerExerciseId(), structuralType)))).id();
         Routine routine = routineRepository.findById(routineId).orElseThrow();
         routine.setFinishedDate(finishedDate);
         return routineId;
     }
 
-    private RoutineDayInput day(Long targetExerciseId, Long fillerExerciseId) {
+    private RoutineDayInput day(Long targetExerciseId, Long fillerExerciseId, BlockStructuralType structuralType) {
         return new RoutineDayInput(null, null, "Dia 1", null, List.of(
-                block("Calentamiento", BlockPurpose.WARMUP, fillerExerciseId, set(10, null)),
-                block("Fuerza principal", BlockPurpose.MAIN_LIFT, targetExerciseId, set(6, "80")),
-                block("Cierre", BlockPurpose.COOLDOWN, fillerExerciseId, set(20, null))
+                block("Calentamiento", BlockStructuralType.STANDARD, BlockPurpose.WARMUP, fillerExerciseId, set(10, null)),
+                block("Fuerza principal", structuralType, BlockPurpose.MAIN_LIFT, targetExerciseId, set(6, "80")),
+                block("Cierre", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, fillerExerciseId, set(20, null))
         ));
     }
 
-    private RoutineBlockInput block(String title, BlockPurpose purpose, Long exerciseId, RoutineExerciseSetInput set) {
-        return new RoutineBlockInput(null, title, BlockStructuralType.STANDARD, purpose, null, null, null, List.of(
+    private RoutineBlockInput block(String title, BlockStructuralType structuralType, BlockPurpose purpose, Long exerciseId, RoutineExerciseSetInput set) {
+        Integer duration = structuralType == BlockStructuralType.CIRCUIT ? 720 : null;
+        return new RoutineBlockInput(null, title, structuralType, purpose, duration, null, null, List.of(
                 new RoutineExerciseInput(exerciseId, null, null, List.of(set))
         ));
     }
