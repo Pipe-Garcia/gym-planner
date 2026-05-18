@@ -26,10 +26,14 @@ export function TrainingSectionsEditor({
   dayIndex,
   context = "template",
   disabled = false,
+  studentId,
+  excludeRoutineId,
 }: {
   dayIndex: number
   context?: "template" | "routine"
   disabled?: boolean
+  studentId?: number
+  excludeRoutineId?: number | null
 }) {
   const { control } = useFormContext()
   const blocksPath = `days.${dayIndex}.blocks`
@@ -85,6 +89,8 @@ export function TrainingSectionsEditor({
         removeAt={blocks.remove}
         disabled={disabled}
         context={context}
+        studentId={studentId}
+        excludeRoutineId={excludeRoutineId}
         blocksPath={blocksPath}
       />
       <SectionPanel
@@ -101,6 +107,8 @@ export function TrainingSectionsEditor({
         removeAt={blocks.remove}
         disabled={disabled}
         context={context}
+        studentId={studentId}
+        excludeRoutineId={excludeRoutineId}
         blocksPath={blocksPath}
       />
       <SectionPanel
@@ -117,6 +125,8 @@ export function TrainingSectionsEditor({
         removeAt={blocks.remove}
         disabled={disabled}
         context={context}
+        studentId={studentId}
+        excludeRoutineId={excludeRoutineId}
         blocksPath={blocksPath}
       />
     </div>
@@ -138,6 +148,8 @@ function SectionPanel({
   blocksPath,
   context,
   disabled,
+  studentId,
+  excludeRoutineId,
 }: {
   icon: "flame" | "target" | "wind"
   group: SectionGroup
@@ -153,6 +165,8 @@ function SectionPanel({
   blocksPath: string
   context: "template" | "routine"
   disabled: boolean
+  studentId?: number
+  excludeRoutineId?: number | null
 }) {
   const Icon = icon === "flame" ? Flame : icon === "target" ? Target : Wind
   return (
@@ -193,6 +207,8 @@ function SectionPanel({
             onMoveDown={() => moveDown(item.idx, sectionItems)}
             disabled={disabled}
             context={context}
+            studentId={studentId}
+            excludeRoutineId={excludeRoutineId}
           />
         ))}
       </div>

@@ -94,7 +94,7 @@ export function RoutineEditorPage() {
           </div>
         ) : null}
         <TemplateMetadataForm routine readOnly={readOnly} />
-        <TrainingDaysEditor context="routine" disabled={readOnly} />
+        <TrainingDaysEditor context="routine" disabled={readOnly} studentId={studentId} excludeRoutineId={routineId || null} />
       </form>
     </FormProvider>
   )

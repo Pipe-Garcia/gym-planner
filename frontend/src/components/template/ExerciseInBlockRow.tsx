@@ -1,6 +1,7 @@
 import { Trash2 } from "lucide-react"
 import { useEffect } from "react"
 import { useFormContext, useWatch } from "react-hook-form"
+import { PreviousLoadPanel } from "@/components/routine/PreviousLoadPanel"
 import { ReorderButtons } from "@/components/template/ReorderButtons"
 import { SetTable } from "@/components/template/SetTable"
 import { emptySet } from "@/components/template/formDefaults"
@@ -26,14 +27,17 @@ interface Props {
   onMoveDown: () => void
   disabled?: boolean
   context?: "template" | "routine"
+  studentId?: number
+  excludeRoutineId?: number | null
+  structuralType?: BlockStructuralType | null
 }
 
-export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, onRemove, onMoveUp, onMoveDown, disabled, context = "template" }: Props) {
-  const { control, register, watch } = useFormContext()
+export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, onRemove, onMoveUp, onMoveDown, disabled, context = "template", studentId, excludeRoutineId, structuralType }: Props) {
+  const { control, register } = useFormContext()
   const prefix = `${blockPath}.exercises.${exerciseIndex}`
-  const name = watch(`${prefix}.exerciseName`) as string | undefined
+  const name = useWatch({ control, name: `${prefix}.exerciseName` }) as string | undefined
+  const selectedExerciseId = useWatch({ control, name: `${prefix}.exerciseId` }) as number | undefined
   const measurement = (useWatch({ control, name: `${prefix}.exerciseMeasurement` }) ?? "REPS_WEIGHT") as MeasurementType
-  const structuralType = useWatch({ control, name: `${blockPath}.structuralType` }) as BlockStructuralType | undefined
 
   return (
     <div className="rounded-md border bg-white p-3">
@@ -52,6 +56,14 @@ export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, 
             </Button>
           </div>
           <Input placeholder="Notas del ejercicio" disabled={disabled} {...register(`${prefix}.exerciseNotes`)} />
+          {context === "routine" && studentId && selectedExerciseId ? (
+            <PreviousLoadPanel
+              studentId={studentId}
+              exerciseId={selectedExerciseId}
+              excludeRoutineId={excludeRoutineId}
+              structuralType={structuralType}
+            />
+          ) : null}
           {structuralType === "CIRCUIT" ? (
             <CircuitExerciseRow prefix={prefix} measurement={measurement} context={context} disabled={disabled} />
           ) : (

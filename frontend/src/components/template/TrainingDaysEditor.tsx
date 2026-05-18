@@ -8,7 +8,17 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { DayInput } from "@/types/training"
 
-export function TrainingDaysEditor({ context = "template", disabled = false }: { context?: "template" | "routine"; disabled?: boolean }) {
+export function TrainingDaysEditor({
+  context = "template",
+  disabled = false,
+  studentId,
+  excludeRoutineId,
+}: {
+  context?: "template" | "routine"
+  disabled?: boolean
+  studentId?: number
+  excludeRoutineId?: number | null
+}) {
   const { control, register } = useFormContext()
   const days = useFieldArray({ control, name: "days" })
   const watched = useWatch({ control, name: "days" })
@@ -87,7 +97,14 @@ export function TrainingDaysEditor({ context = "template", disabled = false }: {
             </Button>
           ) : null}
         </div>
-        <TrainingSectionsEditor key={activeIndex} dayIndex={activeIndex} context={context} disabled={disabled} />
+        <TrainingSectionsEditor
+          key={activeIndex}
+          dayIndex={activeIndex}
+          context={context}
+          disabled={disabled}
+          studentId={studentId}
+          excludeRoutineId={excludeRoutineId}
+        />
       </section>
     </div>
   )
