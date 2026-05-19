@@ -5,8 +5,8 @@ export function structuralTypeLabel(type?: BlockStructuralType | null) {
   const labels: Record<BlockStructuralType, string> = {
     STANDARD: "Estándar",
     CIRCUIT: "Circuito",
-    PYRAMID: "Pirámide ascendente",
-    REVERSE_PYRAMID: "Pirámide invertida",
+    PYRAMID: "Pirámide",
+    REVERSE_PYRAMID: "Pirámide inversa",
     DROP_SET: "Drop set",
     REST_PAUSE: "Rest pause",
     CLUSTER: "Cluster",
@@ -18,14 +18,14 @@ export function purposeLabel(purpose?: BlockPurpose | null) {
   const labels: Record<BlockPurpose, string> = {
     WARMUP: "Calentamiento",
     ACTIVATION: "Activación",
-    MAIN_LIFT: "Ejercicio principal",
+    MAIN_LIFT: "Parte principal",
     ACCESSORY: "Accesorio",
     CONDITIONING: "Acondicionamiento",
-    CORE: "Zona media",
+    CORE: "Core",
     COOLDOWN: "Vuelta a la calma",
     OTHER: "Otro",
   }
-  return purpose ? labels[purpose] : "Sin proposito"
+  return purpose ? labels[purpose] : "Sin propósito"
 }
 
 export function setKindLabel(kind?: SetKind | null) {

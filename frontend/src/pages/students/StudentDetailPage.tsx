@@ -5,6 +5,7 @@ import { DuplicateRoutineDialog } from "@/components/routine/DuplicateRoutineDia
 import { RoutineActionsBar } from "@/components/routine/RoutineActionsBar"
 import { BackButton } from "@/components/shared/BackButton"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { StudentExerciseHistorySection } from "@/components/student/history/StudentExerciseHistorySection"
 import { StudentHistoryEmptyState } from "@/components/student/history/StudentHistoryEmptyState"
 import { StudentHistorySummary } from "@/components/student/history/StudentHistorySummary"
 import { StudentHistoryTimeline } from "@/components/student/history/StudentHistoryTimeline"
@@ -222,19 +223,18 @@ function StudentHistoryTab({ studentId }: { studentId: number }) {
   }
 
   return (
-    <section className="space-y-6">
-      <StudentHistorySummary
-        summary={summaryQuery.data}
-        isLoading={summaryQuery.isLoading}
-      />
-      <StudentHistoryTimeline studentId={studentId} />
-      <div className="rounded-md border border-dashed bg-white p-5">
-        <h2 className="text-base font-semibold tracking-normal">
-          Historial por ejercicio
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Disponible en la próxima iteración.
-        </p>
+    <section>
+      <div>
+        <StudentHistorySummary
+          summary={summaryQuery.data}
+          isLoading={summaryQuery.isLoading}
+        />
+      </div>
+      <div className="mt-10 border-t border-slate-200 pt-8">
+        <StudentHistoryTimeline studentId={studentId} />
+      </div>
+      <div className="mt-10 border-t border-slate-200 pt-8">
+        <StudentExerciseHistorySection studentId={studentId} />
       </div>
     </section>
   )
