@@ -5,6 +5,10 @@ import { DuplicateRoutineDialog } from "@/components/routine/DuplicateRoutineDia
 import { RoutineActionsBar } from "@/components/routine/RoutineActionsBar"
 import { BackButton } from "@/components/shared/BackButton"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { StudentExerciseHistorySection } from "@/components/student/history/StudentExerciseHistorySection"
+import { StudentHistoryEmptyState } from "@/components/student/history/StudentHistoryEmptyState"
+import { StudentHistorySummary } from "@/components/student/history/StudentHistorySummary"
+import { StudentHistoryTimeline } from "@/components/student/history/StudentHistoryTimeline"
 import { InjuryForm } from "@/components/student/InjuryForm"
 import { InjuryList } from "@/components/student/InjuryList"
 import { NoteForm } from "@/components/student/NoteForm"
@@ -12,6 +16,7 @@ import { NoteList } from "@/components/student/NoteList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useRoutine, useStudentRoutines } from "@/hooks/useRoutines"
+import { useStudentHistorySummary } from "@/hooks/useStudentHistory"
 import {
   useCreateInjury,
   useCreateNote,
@@ -196,11 +201,42 @@ export function StudentDetailPage() {
       )}
 
       {tab === "Historial" && (
-        <div className="rounded-md border bg-white p-8 text-center text-sm text-muted-foreground">
-          Disponible próximamente.
-        </div>
+        <StudentHistoryTab studentId={student.id} />
       )}
     </div>
+  )
+}
+
+function StudentHistoryTab({ studentId }: { studentId: number }) {
+  const summaryQuery = useStudentHistorySummary(studentId)
+
+  if (summaryQuery.isError) {
+    return (
+      <div className="rounded-md border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
+        No se pudo cargar el historial del alumno.
+      </div>
+    )
+  }
+
+  if (summaryQuery.data?.totalRoutines === 0) {
+    return <StudentHistoryEmptyState />
+  }
+
+  return (
+    <section>
+      <div>
+        <StudentHistorySummary
+          summary={summaryQuery.data}
+          isLoading={summaryQuery.isLoading}
+        />
+      </div>
+      <div className="mt-10 border-t border-slate-200 pt-8">
+        <StudentHistoryTimeline studentId={studentId} />
+      </div>
+      <div className="mt-10 border-t border-slate-200 pt-8">
+        <StudentExerciseHistorySection studentId={studentId} />
+      </div>
+    </section>
   )
 }
 
