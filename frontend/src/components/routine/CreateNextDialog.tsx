@@ -67,19 +67,26 @@ export function CreateNextDialog({ open, onOpenChange, routine, studentId, onSuc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col p-0">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>Crear próximo ciclo</DialogTitle>
-          <DialogDescription>Creá una nueva rutina enlazada a este ciclo cerrado.</DialogDescription>
+          <DialogDescription>Creás el próximo ciclo a partir de «{routine.name}» como copia independiente.</DialogDescription>
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Alumno:</span> {routine.studentName}
+            <span className="mx-2">·</span>
+            <span className="font-medium text-foreground">Rutina origen:</span> {routine.name}
+          </div>
         </DialogHeader>
-        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold">Nuevo ciclo</h3>
-            <NewRoutineFields form={form} disabled={mutation.isPending} />
-          </section>
-          <Separator />
-          <WeightAdjustmentFields form={form} disabled={mutation.isPending} />
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            <WeightAdjustmentFields form={form} disabled={mutation.isPending} />
+            <Separator />
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold">Datos de la nueva rutina</h3>
+              <NewRoutineFields form={form} disabled={mutation.isPending} />
+            </section>
+          </div>
+          <div className="flex flex-col-reverse gap-2 border-t bg-background px-6 py-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Crear próximo ciclo</Button>
           </div>

@@ -26,7 +26,7 @@ export function NewRoutineFields<T extends CycleFormFields>({ form, disabled }: 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="space-y-1 text-sm font-medium">
-        Nombre
+        Nombre de la nueva rutina
         <Input disabled={disabled} {...form.register("newRoutineName" as FieldPath<T>)} />
         {form.formState.errors.newRoutineName ? <p className="text-xs text-destructive">{String(form.formState.errors.newRoutineName.message)}</p> : null}
       </label>
@@ -67,38 +67,65 @@ export function WeightAdjustmentFields<T extends CycleFormFields>({ form, disabl
   const weightPercentage = form.watch("weightPercentage" as FieldPath<T>) as number
   const roundingStepKg = form.watch("roundingStepKg" as FieldPath<T>) as number | null
   const example = useMemo(() => weightExample(80, weightPercentage, roundingStepKg), [weightPercentage, roundingStepKg])
+  const selectedRounding = roundingOptions.find((option) => option.value === roundingStepKg)
 
   return (
-    <section className="space-y-3 rounded-md border bg-muted/20 p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-sm font-semibold">Ajuste de pesos</h3>
-          <p className="text-xs text-muted-foreground">Se aplica sobre la rutina nueva, sin tocar el historial.</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 rounded-md border bg-white p-1 text-sm">
-          <button
-            type="button"
-            className={applyWeightAdjustment ? "rounded px-3 py-2 text-muted-foreground" : "rounded bg-muted px-3 py-2 font-medium"}
-            disabled={disabled}
-            onClick={() => form.setValue("applyWeightAdjustment" as FieldPath<T>, false as never)}
-          >
-            Sin ajuste
-          </button>
-          <button
-            type="button"
-            className={applyWeightAdjustment ? "rounded bg-primary px-3 py-2 font-medium text-primary-foreground" : "rounded px-3 py-2 text-muted-foreground"}
-            disabled={disabled}
-            onClick={() => form.setValue("applyWeightAdjustment" as FieldPath<T>, true as never)}
-          >
-            Aplicar ajuste
-          </button>
-        </div>
+    <section className="space-y-4 rounded-md border bg-muted/20 p-4">
+      <div>
+        <h3 className="text-sm font-semibold">Cargas del nuevo ciclo</h3>
+        <p className="text-xs text-muted-foreground">Definí si la copia arranca igual o con un ajuste porcentual.</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          aria-pressed={!applyWeightAdjustment}
+          className={`rounded-md border p-3 text-left transition hover:border-primary/70 disabled:pointer-events-none disabled:opacity-60 ${
+            applyWeightAdjustment ? "bg-background" : "border-primary bg-primary/10 shadow-sm"
+          }`}
+          disabled={disabled}
+          onClick={() => form.setValue("applyWeightAdjustment" as FieldPath<T>, false as never)}
+        >
+          <span className="block text-sm font-semibold">Mantener cargas</span>
+          <span className="mt-1 block text-xs text-muted-foreground">Arranca con los mismos pesos del ciclo actual.</span>
+        </button>
+        <button
+          type="button"
+          aria-pressed={applyWeightAdjustment}
+          className={`rounded-md border p-3 text-left transition hover:border-primary/70 disabled:pointer-events-none disabled:opacity-60 ${
+            applyWeightAdjustment ? "border-primary bg-primary/10 shadow-sm" : "bg-background"
+          }`}
+          disabled={disabled}
+          onClick={() => form.setValue("applyWeightAdjustment" as FieldPath<T>, true as never)}
+        >
+          <span className="block text-sm font-semibold">Ajustar cargas</span>
+          <span className="mt-1 block text-xs text-muted-foreground">Aplica un porcentaje a las series con peso cargado.</span>
+        </button>
       </div>
 
       {applyWeightAdjustment ? (
         <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {[-10, -5, 2.5, 5, 10].map((percentage) => (
+              <button
+                key={percentage}
+                type="button"
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition hover:border-primary/70 disabled:pointer-events-none disabled:opacity-60 ${
+                  weightPercentage === percentage ? "border-primary bg-primary text-primary-foreground" : "bg-background"
+                }`}
+                disabled={disabled}
+                onClick={() => form.setValue("weightPercentage" as FieldPath<T>, percentage as never)}
+              >
+                {formatPercent(percentage)}
+              </button>
+            ))}
+          </div>
+
           <label className="space-y-2 text-sm font-medium">
-            Porcentaje <span className="font-semibold text-primary">{formatPercent(weightPercentage)}</span>
+            <span className="flex items-baseline justify-between gap-3">
+              <span>Porcentaje</span>
+              <span className="text-2xl font-semibold text-primary">{formatPercent(weightPercentage)}</span>
+            </span>
             <Controller
               control={form.control}
               name={"weightPercentage" as FieldPath<T>}
@@ -107,7 +134,7 @@ export function WeightAdjustmentFields<T extends CycleFormFields>({ form, disabl
                   type="range"
                   min={-30}
                   max={50}
-                  step={1}
+                  step={0.5}
                   value={Number(field.value)}
                   disabled={disabled}
                   className="w-full accent-primary"
@@ -124,35 +151,51 @@ export function WeightAdjustmentFields<T extends CycleFormFields>({ form, disabl
               control={form.control}
               name={"roundingStepKg" as FieldPath<T>}
               render={({ field }) => (
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="flex flex-wrap gap-2">
                   {roundingOptions.map((option) => (
-                    <label key={option.label} className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm">
-                      <input
-                        type="radio"
-                        name="roundingStepKg"
-                        checked={field.value === option.value}
-                        disabled={disabled}
-                        onChange={() => field.onChange(option.value)}
-                      />
-                      {option.label}
-                    </label>
+                    <button
+                      key={option.label}
+                      type="button"
+                      aria-pressed={field.value === option.value}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition hover:border-primary/70 disabled:pointer-events-none disabled:opacity-60 ${
+                        field.value === option.value ? "border-primary bg-primary text-primary-foreground" : "bg-background"
+                      }`}
+                      disabled={disabled}
+                      onClick={() => field.onChange(option.value)}
+                    >
+                      {option.value === 2.5 ? "2.5 kg" : option.label}
+                    </button>
                   ))}
                 </div>
               )}
             />
+            <p className="text-xs text-muted-foreground">
+              {roundingStepKg === 2.5
+                ? "Habitual para discos de gimnasio."
+                : selectedRounding?.value
+                  ? `Redondea al múltiplo más cercano de ${selectedRounding.label}.`
+                  : "Mantiene el resultado exacto del porcentaje."}
+            </p>
           </div>
 
-          <div className="rounded-md border bg-white p-3 text-sm">
-            <p className="font-medium">Ejemplo</p>
-            <p className="mt-1 text-muted-foreground">Un ejercicio con peso actual de 80 kg</p>
-            <p className="mt-2">→ {formatPercent(weightPercentage)} = {formatWeight(example.raw)} kg</p>
-            <p>→ {roundingStepKg ? `redondeado a ${roundingStepKg} kg = ${formatWeight(example.rounded)} kg` : `sin redondeo = ${formatWeight(example.rounded)} kg`}</p>
+          <div className="rounded-md border bg-background p-3 text-sm">
+            <p className="font-medium">Ejemplo de cálculo</p>
+            <p className="mt-2 text-muted-foreground">
+              Una serie de 80 kg → {formatPercent(weightPercentage)} = {formatWeight(example.raw)} kg →{" "}
+              {roundingStepKg ? `redondeado a ${roundingStepKg} kg = ${formatWeight(example.rounded)} kg` : `sin redondeo = ${formatWeight(example.rounded)} kg`}
+            </p>
           </div>
 
-          <p className="flex gap-2 text-xs text-muted-foreground"><Info className="h-4 w-4 shrink-0" />Los ejercicios sin peso (solo tiempo, distancia o reps) no se modifican.</p>
-          <p className="flex gap-2 text-xs text-muted-foreground"><Info className="h-4 w-4 shrink-0" />Si aplicás el ajuste y después volvés a aplicar otro, el segundo se calcula sobre los pesos ya actualizados.</p>
+          <div className="space-y-2">
+            <p className="flex gap-2 text-xs text-muted-foreground"><Info className="h-4 w-4 shrink-0" />Solo se ajustan las series con peso cargado. Las de tiempo, distancia o reps quedan igual.</p>
+            <p className="flex gap-2 text-xs text-muted-foreground"><Info className="h-4 w-4 shrink-0" />Si volvés a ajustar más adelante, el nuevo porcentaje se calcula sobre los pesos ya actualizados.</p>
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <p className="rounded-md border bg-background p-3 text-sm text-muted-foreground">
+          El nuevo ciclo arranca con las mismas cargas que el ciclo actual. No se modifica ningún peso.
+        </p>
+      )}
     </section>
   )
 }
