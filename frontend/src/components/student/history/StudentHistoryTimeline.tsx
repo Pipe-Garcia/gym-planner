@@ -72,12 +72,13 @@ export function StudentHistoryTimeline({
         </p>
       </div>
 
-      <div className="relative space-y-4 before:absolute before:bottom-0 before:left-[13px] before:top-2 before:w-px before:bg-border">
-        {items.map((item) => (
+      <div className="relative space-y-4 before:absolute before:bottom-0 before:left-[10px] before:top-[30px] before:z-0 before:w-[3px] before:rounded-full before:bg-gradient-to-b before:from-emerald-300 before:via-sky-300 before:to-sky-200">
+        {items.map((item, index) => (
           <StudentHistoryTimelineItem
             key={item.routineId}
             studentId={studentId}
             item={item}
+            isLast={index === items.length - 1}
           />
         ))}
       </div>

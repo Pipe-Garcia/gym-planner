@@ -63,7 +63,7 @@ export function PreviousLoadPanel({ studentId, exerciseId, excludeRoutineId, str
         occurrence.routineName ? `Rutina: ${occurrence.routineName}` : null,
         setsSummary(occurrence),
       ].filter(Boolean)
-  const contextLine = [occurrence.dayName, sectionLabel(occurrence.blockPurpose), occurrence.blockTitle].filter(Boolean).join(" · ")
+  const contextLine = uniqueContextParts([occurrence.dayName, sectionLabel(occurrence.blockPurpose), occurrence.blockTitle]).join(" · ")
   const formattedSets = formatSets(occurrence)
 
   return (
@@ -113,6 +113,28 @@ function sectionLabel(purpose?: BlockPurpose | null) {
   if (purpose === "WARMUP" || purpose === "ACTIVATION") return "Calentamiento"
   if (purpose === "COOLDOWN") return "Vuelta a la calma"
   return "Parte principal"
+}
+
+function uniqueContextParts(parts: Array<string | null | undefined>) {
+  const result: string[] = []
+
+  for (const part of parts) {
+    const value = part?.trim()
+    if (!value) continue
+
+    const normalized = normalizeForComparison(value)
+    const alreadyIncluded = result.some((existing) => normalizeForComparison(existing) === normalized)
+    if (!alreadyIncluded) result.push(value)
+  }
+
+  return result
+}
+
+function normalizeForComparison(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
 }
 
 function setsSummary(occurrence: PreviousLoadOccurrence) {

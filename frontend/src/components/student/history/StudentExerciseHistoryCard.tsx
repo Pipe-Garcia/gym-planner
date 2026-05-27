@@ -67,21 +67,23 @@ export function StudentExerciseHistoryCard({
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2 px-4 pb-4 pl-12 sm:pl-12">
-        {exercise.structuralTypesUsed.map((type) => (
-          <span
-            key={type}
-            className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
-          >
-            {structuralTypeLabel(type)}
-          </span>
-        ))}
-        {exercise.lastStructuralType ? (
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
-            Última en {structuralTypeLabel(exercise.lastStructuralType)}
-          </span>
-        ) : null}
-      </div>
+      {expanded ? (
+        <div className="flex flex-wrap gap-2 px-4 pb-4 pl-12 sm:pl-12">
+          {exercise.structuralTypesUsed.map((type) => (
+            <span
+              key={type}
+              className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
+            >
+              {structuralTypeLabel(type)}
+            </span>
+          ))}
+          {exercise.lastStructuralType ? (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+              Última en {structuralTypeLabel(exercise.lastStructuralType)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {expanded ? (
         <div className="border-t border-emerald-100 bg-white/70 p-4">
