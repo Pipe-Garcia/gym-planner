@@ -10,21 +10,26 @@ import type { StudentRoutineTimelineItem as TimelineItem } from "@/types/student
 type StudentHistoryTimelineItemProps = {
   studentId: number
   item: TimelineItem
+  isLast: boolean
 }
 
 export function StudentHistoryTimelineItem({
   studentId,
   item,
+  isLast,
 }: StudentHistoryTimelineItemProps) {
   return (
-    <div className="relative pl-8">
+    <div className="relative z-10 pl-8">
+      {isLast ? (
+        <span className="absolute bottom-0 left-0 top-[31px] z-[1] w-6 bg-background" />
+      ) : null}
       <span
         className={cn(
-          "absolute left-[5px] top-6 h-3 w-3 rounded-full ring-4 ring-white",
+          "absolute left-[5px] top-6 z-10 h-3 w-3 rounded-full ring-4 ring-white",
           statusDotClass(item.status),
         )}
       />
-      <div className="rounded-md border bg-white p-4 shadow-sm">
+      <div className="relative z-10 rounded-md border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">

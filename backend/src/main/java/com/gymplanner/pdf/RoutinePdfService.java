@@ -521,7 +521,7 @@ public class RoutinePdfService {
             return null;
         }
         int minutes = Math.max(1, block.getTotalDurationSeconds() / 60);
-        return "Rotar entre los " + exerciseCount + " ejercicios sin descanso durante " + minutes + " minutos. Volver al inicio al terminar.";
+        return "Rotar entre los " + exerciseCount + " ejercicios sin descanso durante " + minutes + " minutos.";
     }
 
     /**

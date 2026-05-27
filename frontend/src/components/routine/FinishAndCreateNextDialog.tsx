@@ -79,38 +79,45 @@ export function FinishAndCreateNextDialog({ open, onOpenChange, routine, student
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col p-0">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>Finalizar y crear próxima</DialogTitle>
-          <DialogDescription>Cerrá el ciclo actual y prepará la siguiente rutina con una copia independiente.</DialogDescription>
+          <DialogDescription>Cerrás «{routine.name}» y creás el próximo ciclo como copia independiente.</DialogDescription>
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Alumno:</span> {routine.studentName}
+            <span className="mx-2">·</span>
+            <span className="font-medium text-foreground">Rutina origen:</span> {routine.name}
+          </div>
         </DialogHeader>
 
-        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold">Cierre del ciclo actual</h3>
-            <label className="space-y-1 text-sm font-medium">
-              Nota de cierre (opcional)
-              <Textarea
-                placeholder="¿Cómo respondió el alumno? ¿Qué cambios hacer en el próximo ciclo?"
-                disabled={mutation.isPending}
-                {...form.register("closureNotes")}
-              />
-            </label>
-            <p className="text-xs text-muted-foreground">Solo visible para el equipo. No se incluye en PDF ni WhatsApp.</p>
-          </section>
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            <WeightAdjustmentFields form={form} disabled={mutation.isPending} />
 
-          <Separator />
+            <Separator />
 
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold">Nuevo ciclo</h3>
-            <NewRoutineFields form={form} disabled={mutation.isPending} />
-          </section>
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold">Datos de la nueva rutina</h3>
+              <NewRoutineFields form={form} disabled={mutation.isPending} />
+            </section>
 
-          <Separator />
+            <Separator />
 
-          <WeightAdjustmentFields form={form} disabled={mutation.isPending} />
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">Nota de cierre (opcional)</h3>
+              <label className="space-y-1 text-sm font-medium">
+                <span className="sr-only">Nota de cierre (opcional)</span>
+                <Textarea
+                  placeholder="¿Cómo respondió el alumno? ¿Qué cambios hacer en el próximo ciclo?"
+                  disabled={mutation.isPending}
+                  {...form.register("closureNotes")}
+                />
+              </label>
+              <p className="text-xs text-muted-foreground">Solo visible para el equipo. No se incluye en PDF ni WhatsApp.</p>
+            </section>
+          </div>
 
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-2 border-t bg-background px-6 py-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
