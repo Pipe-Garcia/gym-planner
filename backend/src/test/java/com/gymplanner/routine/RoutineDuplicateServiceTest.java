@@ -62,6 +62,26 @@ class RoutineDuplicateServiceTest {
     }
 
     @Test
+    void routineSetStoresAndReturnsExecutionCue() {
+        Fixture fixture = fixture();
+
+        var routine = routineService.get(1L, fixture.originalRoutineId);
+
+        assertThat(routine.days().get(0).blocks().get(0).exercises().get(0).sets().get(0).executionCue())
+                .isEqualTo("Pausa abajo");
+    }
+
+    @Test
+    void duplicateRoutineCopiesExecutionCue() {
+        Fixture fixture = fixture();
+
+        var copy = routineService.duplicate(1L, 1L, fixture.originalRoutineId, new DuplicateRoutineRequest(fixture.targetStudentId, null, LocalDate.now(), RoutineStatus.DRAFT));
+
+        assertThat(copy.days().get(0).blocks().get(0).exercises().get(0).sets().get(0).executionCue())
+                .isEqualTo("Pausa abajo");
+    }
+
+    @Test
     void duplicateRoutineDefaultDraftDoesNotFinishTargetActive() {
         Fixture fixture = fixture();
         Long targetActiveId = routineService.createFromScratch(1L, 1L, routineRequest(fixture.targetStudentId, "Activa destino", RoutineStatus.ACTIVE, fixture.exerciseId, new BigDecimal("35.00"))).id();
@@ -126,7 +146,7 @@ class RoutineDuplicateServiceTest {
     private RoutineBlockInput block(String title, BlockPurpose purpose, Long exerciseId, BigDecimal firstWeight) {
         return new RoutineBlockInput(null, title, BlockStructuralType.STANDARD, purpose, null, null, null, List.of(
                 new RoutineExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
-                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, firstWeight, null, null, 90, "3010", 8, "Set pesado", false),
+                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, firstWeight, null, null, 90, "3010", "Pausa abajo", 8, "Set pesado", false),
                         new RoutineExerciseSetInput(null, SetKind.NORMAL, 10, null, null, new BigDecimal("67.00"), null, null, 60, null, null, "Set liviano", false)
                 ))
         ));

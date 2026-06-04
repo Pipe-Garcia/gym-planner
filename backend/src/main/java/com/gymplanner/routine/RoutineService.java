@@ -304,6 +304,7 @@ public class RoutineService {
                     set.setTargetDistanceMeters(originalSet.getTargetDistanceMeters());
                     set.setRestAfterSeconds(originalSet.getRestAfterSeconds());
                     set.setTempo(clean(originalSet.getTempo()));
+                    set.setExecutionCue(clean(originalSet.getExecutionCue()));
                     set.setRpe(originalSet.getRpe());
                     set.setNotes(clean(originalSet.getNotes()));
                     set.setToFailure(originalSet.isToFailure());
@@ -364,6 +365,7 @@ public class RoutineService {
             set.setTargetDistanceMeters(input.targetDistanceMeters());
             set.setRestAfterSeconds(input.restAfterSeconds());
             set.setTempo(clean(input.tempo()));
+            set.setExecutionCue(clean(input.executionCue()));
             set.setRpe(input.rpe());
             set.setNotes(clean(input.notes()));
             set.setToFailure(Boolean.TRUE.equals(input.toFailure()));

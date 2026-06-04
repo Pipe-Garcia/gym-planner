@@ -64,6 +64,9 @@ public class TemplateExerciseSet {
     @Column(length = 20)
     private String tempo;
 
+    @Column(name = "execution_cue", length = 120)
+    private String executionCue;
+
     private Integer rpe;
 
     @Column(columnDefinition = "TEXT")

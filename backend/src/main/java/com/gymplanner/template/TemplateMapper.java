@@ -45,6 +45,6 @@ public class TemplateMapper {
     }
 
     private TemplateExerciseSetResponse toSet(TemplateExerciseSet set) {
-        return new TemplateExerciseSetResponse(set.getId(), set.getSetNumber(), set.getSetKind(), set.getTargetReps(), set.getTargetRepsMin(), set.getTargetRepsMax(), set.getTargetWeightKg(), set.getTargetTimeSeconds(), set.getTargetDistanceMeters(), set.getRestAfterSeconds(), set.getTempo(), set.getRpe(), set.getNotes(), set.isToFailure());
+        return new TemplateExerciseSetResponse(set.getId(), set.getSetNumber(), set.getSetKind(), set.getTargetReps(), set.getTargetRepsMin(), set.getTargetRepsMax(), set.getTargetWeightKg(), set.getTargetTimeSeconds(), set.getTargetDistanceMeters(), set.getRestAfterSeconds(), set.getTempo(), set.getExecutionCue(), set.getRpe(), set.getNotes(), set.isToFailure());
     }
 }
