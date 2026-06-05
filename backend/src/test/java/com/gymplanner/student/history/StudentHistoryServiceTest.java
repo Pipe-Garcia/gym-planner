@@ -325,6 +325,27 @@ class StudentHistoryServiceTest {
     }
 
     @Test
+    void occurrencesIncludeExecutionCueWhenPresent() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Sets con indicacion", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.REVERSE_PYRAMID, "recorrido completo");
+
+        StudentExerciseOccurrenceResponse occurrence = studentHistoryService.getExerciseOccurrences(1L, fixture.studentId(), fixture.exerciseId(), 0, 10).content().getFirst();
+
+        assertThat(occurrence.sets().getFirst().executionCue()).isEqualTo("recorrido completo");
+    }
+
+    @Test
+    void occurrencesReturnNullExecutionCueWhenAbsent() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Sets sin indicacion", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 1));
+
+        StudentExerciseOccurrenceResponse occurrence = studentHistoryService.getExerciseOccurrences(1L, fixture.studentId(), fixture.exerciseId(), 0, 10).content().getFirst();
+
+        assertThat(occurrence.sets().getFirst().executionCue()).isNull();
+    }
+
+    @Test
     void occurrencesOrderByEffectiveDateDesc() {
         Fixture fixture = fixture();
         Long older = createRoutine(fixture, "Older", RoutineStatus.FINISHED, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 1));
@@ -436,6 +457,11 @@ class StudentHistoryServiceTest {
 
     private Long createRoutine(Fixture fixture, String name, RoutineStatus status, LocalDate assignedDate, LocalDate finishedDate,
             String internalNotes, String closureNotes, BlockStructuralType structuralType) {
+        return createRoutine(fixture, name, status, assignedDate, finishedDate, internalNotes, closureNotes, structuralType, null);
+    }
+
+    private Long createRoutine(Fixture fixture, String name, RoutineStatus status, LocalDate assignedDate, LocalDate finishedDate,
+            String internalNotes, String closureNotes, BlockStructuralType structuralType, String executionCue) {
         Long routineId = routineService.createFromScratch(1L, 1L, new CreateRoutineFromScratchRequest(
                 fixture.studentId(),
                 name,
@@ -444,7 +470,7 @@ class StudentHistoryServiceTest {
                 assignedDate,
                 "Notas generales",
                 internalNotes,
-                List.of(day(fixture.exerciseId(), fixture.fillerExerciseId(), structuralType)))).id();
+                List.of(day(fixture.exerciseId(), fixture.fillerExerciseId(), structuralType, executionCue)))).id();
         Routine routine = routineRepository.findById(routineId).orElseThrow();
         routine.setFinishedDate(finishedDate);
         routine.setClosureNotes(closureNotes);
@@ -452,23 +478,36 @@ class StudentHistoryServiceTest {
     }
 
     private RoutineDayInput day(Long targetExerciseId, Long fillerExerciseId, BlockStructuralType structuralType) {
+        return day(targetExerciseId, fillerExerciseId, structuralType, null);
+    }
+
+    private RoutineDayInput day(Long targetExerciseId, Long fillerExerciseId, BlockStructuralType structuralType, String executionCue) {
         return new RoutineDayInput(null, null, "Dia 1", null, List.of(
                 block("Entrada en calor", BlockStructuralType.STANDARD, BlockPurpose.WARMUP, fillerExerciseId, null, null),
-                block("Bloque objetivo", structuralType, BlockPurpose.MAIN_LIFT, targetExerciseId, "Cuidar tecnica", "80"),
+                block("Bloque objetivo", structuralType, BlockPurpose.MAIN_LIFT, targetExerciseId, "Cuidar tecnica", "80", executionCue),
                 block("Movilidad", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, fillerExerciseId, null, null)
         ));
     }
 
     private RoutineBlockInput block(String title, BlockStructuralType structuralType, BlockPurpose purpose, Long exerciseId,
             String exerciseNotes, String weight) {
+        return block(title, structuralType, purpose, exerciseId, exerciseNotes, weight, null);
+    }
+
+    private RoutineBlockInput block(String title, BlockStructuralType structuralType, BlockPurpose purpose, Long exerciseId,
+            String exerciseNotes, String weight, String executionCue) {
         return new RoutineBlockInput(null, title, structuralType, purpose, null, null, "Nota de bloque", List.of(
-                new RoutineExerciseInput(exerciseId, null, exerciseNotes, List.of(set(6, weight)))
+                new RoutineExerciseInput(exerciseId, null, exerciseNotes, List.of(set(6, weight, executionCue)))
         ));
     }
 
     private RoutineExerciseSetInput set(int reps, String weight) {
+        return set(reps, weight, null);
+    }
+
+    private RoutineExerciseSetInput set(int reps, String weight, String executionCue) {
         return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null,
-                weight == null ? null : new BigDecimal(weight), null, null, 60, "2-0-2", 8, "set notes", false);
+                weight == null ? null : new BigDecimal(weight), null, null, 60, "2-0-2", executionCue, 8, "set notes", false);
     }
 
     private void addInjury(Long studentId, String bodyArea, String description) {

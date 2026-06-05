@@ -78,6 +78,22 @@ class PreviousLoadsServiceTest {
     }
 
     @Test
+    void returnsExecutionCueForPreviousLoadSetsWhenPresent() {
+        Fixture fixture = fixture();
+        createRoutine(fixture, "Cargas con indicacion", RoutineStatus.FINISHED, LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 6, 1), null, null, BlockStructuralType.STANDARD,
+                BlockPurpose.MAIN_LIFT, List.of(
+                        set(12, "20", 60, "recorrido completo"),
+                        set(12, "20", 60)));
+
+        PreviousLoadsResponse response = previousLoadsService.getPreviousLoads(1L, fixture.studentId(), fixture.exerciseId(), null, 1);
+
+        assertThat(response.occurrences().getFirst().sets())
+                .extracting("executionCue")
+                .containsExactly("recorrido completo", null);
+    }
+
+    @Test
     void returnsMultipleOccurrencesSortedByEffectiveDate() {
         Fixture fixture = fixture();
         Long oldest = createRoutine(fixture, "Old", RoutineStatus.FINISHED, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 10));
@@ -558,6 +574,11 @@ class PreviousLoadsServiceTest {
     private RoutineExerciseSetInput set(int reps, String weight, int restSeconds) {
         return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null,
                 weight == null ? null : new BigDecimal(weight), null, null, restSeconds, null, null, null, false);
+    }
+
+    private RoutineExerciseSetInput set(int reps, String weight, int restSeconds, String executionCue) {
+        return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null,
+                weight == null ? null : new BigDecimal(weight), null, null, restSeconds, null, executionCue, null, null, false);
     }
 
     private void addInjury(Long studentId, String bodyArea, String description) {

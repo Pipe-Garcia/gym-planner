@@ -16,5 +16,6 @@ public record StudentExerciseOccurrenceSetResponse(
         String tempo,
         Integer rpe,
         boolean toFailure,
-        String notes) {
+        String notes,
+        String executionCue) {
 }

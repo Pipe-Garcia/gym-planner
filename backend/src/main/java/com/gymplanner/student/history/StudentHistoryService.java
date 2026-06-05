@@ -240,7 +240,8 @@ public class StudentHistoryService {
                 set.getTempo(),
                 set.getRpe(),
                 set.isToFailure(),
-                set.getNotes());
+                set.getNotes(),
+                set.getExecutionCue());
     }
 
     private Long durationFrom(LocalDate start, LocalDate end) {

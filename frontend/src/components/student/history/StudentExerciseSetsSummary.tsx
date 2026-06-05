@@ -25,7 +25,8 @@ export function StudentExerciseSetsSummary({
   }
 
   const first = sets[0]
-  const allEqual = sets.every((set) => setSignature(set) === setSignature(first))
+  const hasExecutionCue = sets.some((set) => normalizedExecutionCue(set.executionCue))
+  const allEqual = !hasExecutionCue && sets.every((set) => setSignature(set) === setSignature(first))
 
   if (allEqual) {
     return (
@@ -108,6 +109,7 @@ function setSignature(set: StudentExerciseOccurrenceSet) {
     rpe: set.rpe,
     tempo: set.tempo,
     toFailure: set.toFailure,
+    executionCue: normalizedExecutionCue(set.executionCue),
   })
 }
 
@@ -127,6 +129,8 @@ function formatSetParts(set: StudentExerciseOccurrenceSet) {
   if (set.rpe !== null) parts.push(`RPE ${formatNumber(set.rpe)}`)
   if (set.toFailure) parts.push("al fallo")
   if (set.tempo?.trim()) parts.push(`tempo ${set.tempo}`)
+  const executionCue = normalizedExecutionCue(set.executionCue)
+  if (executionCue) parts.push(executionCue)
 
   return parts.length > 0 ? parts : ["sin objetivos cargados"]
 }
@@ -153,4 +157,9 @@ function formatNumber(value: number) {
   return Number.isInteger(value)
     ? String(value)
     : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",")
+}
+
+function normalizedExecutionCue(value?: string | null) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
 }
