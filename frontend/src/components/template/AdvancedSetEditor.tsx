@@ -7,6 +7,7 @@ import type { MeasurementType } from "@/types/exercise"
 import type { ExerciseSetInput } from "@/types/training"
 
 type Column = "reps" | "weight" | "time" | "distance" | "rest" | "notes"
+const executionCueSuggestions = ["Completo", "Parcial largo", "Parcial medio", "Parcial corto"]
 
 const nullableNumberRegister = {
   setValueAs: (value: unknown) => {
@@ -83,7 +84,8 @@ function SetEditorRow({
   disabled?: boolean
   onRemove: () => void
 }) {
-  const { register } = useFormContext()
+  const { register, setValue } = useFormContext()
+  const executionCuePath = `${name}.${index}.executionCue`
 
   return (
     <div className="rounded-md border bg-white p-3">
@@ -184,6 +186,32 @@ function SetEditorRow({
             />
           </label>
         ) : null}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <label className="space-y-1 text-sm font-medium">
+          Indicación
+          <Input
+            placeholder="Ej: recorrido completo, parcial largo, parcial corto"
+            disabled={disabled}
+            {...register(executionCuePath)}
+          />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {executionCueSuggestions.map((suggestion) => (
+            <Button
+              key={suggestion}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={disabled}
+              onClick={() => setValue(executionCuePath, suggestion, { shouldDirty: true, shouldTouch: true })}
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   )
