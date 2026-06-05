@@ -155,18 +155,42 @@ export function TrainingExerciseTable({ block, context }: { block: TrainingBlock
 function ExerciseTableRow({ exercise, isCircuit, showWeight }: { exercise: ExerciseInBlock; isCircuit: boolean; showWeight: boolean }) {
   const sets = [...exercise.sets].sort((a, b) => a.setNumber - b.setNumber)
   const measurement = exercise.defaultMeasurement ?? exercise.exercise?.defaultMeasurement ?? exercise.exerciseMeasurement
+
+  if (isCircuit || allSetsAreEquivalent(sets)) {
+    return (
+      <tr className="border-b last:border-0">
+        <ExerciseNameCell exercise={exercise} />
+        {isCircuit ? null : <td className="px-3 py-3 align-top">{sets.length || "-"}</td>}
+        <td className="px-3 py-3 align-top">{formatTargets(sets, measurement)}</td>
+        {showWeight ? <td className="px-3 py-3 align-top">{formatWeights(sets)}</td> : null}
+        {isCircuit ? null : <td className="px-3 py-3 align-top">{formatRest(sets)}</td>}
+        <td className="px-3 py-3 align-top text-muted-foreground">{formatNotes(exercise, sets)}</td>
+      </tr>
+    )
+  }
+
   return (
-    <tr className="border-b last:border-0">
-      <td className="px-3 py-3 align-top">
-        <p className="font-medium">{exercise.exerciseName}</p>
-        {!exercise.exerciseActive ? <p className="text-xs text-amber-700">Ejercicio inactivo</p> : null}
-      </td>
-      {isCircuit ? null : <td className="px-3 py-3 align-top">{sets.length || "-"}</td>}
-      <td className="px-3 py-3 align-top">{formatTargets(sets, measurement)}</td>
-      {showWeight ? <td className="px-3 py-3 align-top">{formatWeights(sets)}</td> : null}
-      {isCircuit ? null : <td className="px-3 py-3 align-top">{formatRest(sets)}</td>}
-      <td className="px-3 py-3 align-top text-muted-foreground">{formatNotes(exercise, sets)}</td>
-    </tr>
+    <>
+      {sets.map((set, index) => (
+        <tr key={set.id ?? set.setNumber} className="border-b last:border-0">
+          {index === 0 ? <ExerciseNameCell exercise={exercise} rowSpan={sets.length} /> : null}
+          <td className="px-3 py-3 align-top">{seriesLabel(set)}</td>
+          <td className="px-3 py-3 align-top">{formatSetTarget(set, measurement) || "-"}</td>
+          {showWeight ? <td className="px-3 py-3 align-top">{formatSetWeight(set)}</td> : null}
+          <td className="px-3 py-3 align-top">{formatSetRest(set)}</td>
+          <td className="px-3 py-3 align-top text-muted-foreground">{formatSetNotes(set)}</td>
+        </tr>
+      ))}
+    </>
+  )
+}
+
+function ExerciseNameCell({ exercise, rowSpan }: { exercise: ExerciseInBlock; rowSpan?: number }) {
+  return (
+    <td rowSpan={rowSpan} className="px-3 py-3 align-top">
+      <p className="font-medium">{exercise.exerciseName}</p>
+      {!exercise.exerciseActive ? <p className="text-xs text-amber-700">Ejercicio inactivo</p> : null}
+    </td>
   )
 }
 
@@ -199,9 +223,17 @@ function formatWeights(sets: ExerciseSet[]) {
   return values.length ? values.join(" / ") : "-"
 }
 
+function formatSetWeight(set: ExerciseSet) {
+  return set.targetWeightKg != null ? `${set.targetWeightKg} kg` : "-"
+}
+
 function formatRest(sets: ExerciseSet[]) {
   const values = uniqueValues(sets.map((set) => (set.restAfterSeconds != null ? `${set.restAfterSeconds}s` : "")).filter(Boolean))
   return values.length ? values.join(" / ") : "-"
+}
+
+function formatSetRest(set: ExerciseSet) {
+  return set.restAfterSeconds != null ? `${set.restAfterSeconds}s` : "-"
 }
 
 function formatNotes(exercise: ExerciseInBlock, sets: ExerciseSet[]) {
@@ -209,6 +241,50 @@ function formatNotes(exercise: ExerciseInBlock, sets: ExerciseSet[]) {
   return uniqueValues(notes).join(" / ") || "-"
 }
 
+function formatSetNotes(set: ExerciseSet) {
+  return set.notes?.trim() || "-"
+}
+
 function uniqueValues(values: string[]) {
   return Array.from(new Set(values))
+}
+
+function allSetsAreEquivalent(sets: ExerciseSet[]) {
+  if (sets.some((set) => normalizedExecutionCue(set.executionCue))) return false
+  if (sets.length <= 1) return true
+
+  const [first, ...rest] = sets
+  return rest.every((set) =>
+    set.targetReps === first.targetReps &&
+    set.targetRepsMin === first.targetRepsMin &&
+    set.targetRepsMax === first.targetRepsMax &&
+    set.targetWeightKg === first.targetWeightKg &&
+    set.targetTimeSeconds === first.targetTimeSeconds &&
+    set.targetDistanceMeters === first.targetDistanceMeters &&
+    set.restAfterSeconds === first.restAfterSeconds &&
+    !set.toFailure &&
+    !first.toFailure,
+  )
+}
+
+function seriesLabel(set: ExerciseSet) {
+  const executionCue = normalizedExecutionCue(set.executionCue)
+  const label = ordinal(set.setNumber)
+  return executionCue ? `${label} · ${executionCue}` : label
+}
+
+function ordinal(value: number) {
+  const labels: Record<number, string> = {
+    1: "1ra",
+    2: "2da",
+    3: "3ra",
+    4: "4ta",
+    5: "5ta",
+  }
+  return labels[value] ?? `${value}a`
+}
+
+function normalizedExecutionCue(value?: string | null) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
 }
