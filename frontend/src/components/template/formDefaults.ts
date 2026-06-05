@@ -19,6 +19,7 @@ export function emptySet(setNumber = 1): ExerciseSetInput {
     targetDistanceMeters: null,
     restAfterSeconds: null,
     tempo: null,
+    executionCue: null,
     rpe: null,
     notes: null,
     toFailure: false,
@@ -55,6 +56,11 @@ function numberOrNull(value: number | null | undefined) {
   return typeof value === "number" && !Number.isNaN(value) ? value : null
 }
 
+function trimmedTextOrNull(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
 export function normalizeSetForSubmit(
   set: Partial<ExerciseSetInput>,
   setNumber: number,
@@ -82,6 +88,7 @@ export function normalizeSetForSubmit(
     restAfterSeconds:
       measurement === "CIRCUIT_REPS" ? null : numberOrNull(set.restAfterSeconds),
     tempo: set.tempo ?? null,
+    executionCue: trimmedTextOrNull(set.executionCue),
     rpe:
       measurement === "TIME" || measurement === "DISTANCE"
         ? null

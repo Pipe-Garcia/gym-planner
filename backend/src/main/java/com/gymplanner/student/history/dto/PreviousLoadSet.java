@@ -14,5 +14,6 @@ public record PreviousLoadSet(
         BigDecimal targetDistanceMeters,
         Integer restAfterSeconds,
         Integer rpe,
-        boolean toFailure) {
+        boolean toFailure,
+        String executionCue) {
 }

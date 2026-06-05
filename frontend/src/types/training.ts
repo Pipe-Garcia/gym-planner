@@ -17,6 +17,7 @@ export interface ExerciseSetInput {
   targetDistanceMeters?: number | null
   restAfterSeconds: number | null
   tempo: string | null
+  executionCue?: string | null
   rpe: number | null
   notes: string | null
   toFailure: boolean

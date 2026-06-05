@@ -98,6 +98,7 @@ public class RoutineFromTemplateService {
                 set.setTargetDistanceMeters(sourceSet.getTargetDistanceMeters());
                 set.setRestAfterSeconds(sourceSet.getRestAfterSeconds());
                 set.setTempo(sourceSet.getTempo());
+                set.setExecutionCue(sourceSet.getExecutionCue());
                 set.setRpe(sourceSet.getRpe());
                 set.setNotes(sourceSet.getNotes());
                 set.setToFailure(sourceSet.isToFailure());

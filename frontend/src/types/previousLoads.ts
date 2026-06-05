@@ -40,6 +40,7 @@ export type PreviousLoadSet = {
   restAfterSeconds: number | null
   rpe: number | null
   toFailure: boolean
+  executionCue: string | null
 }
 
 export type PreviousLoadsParams = {

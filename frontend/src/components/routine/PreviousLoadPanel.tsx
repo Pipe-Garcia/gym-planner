@@ -186,6 +186,8 @@ function formatSetTarget(
   if (set.targetWeightKg != null) parts.push(`${formatNumber(set.targetWeightKg)} kg`)
   if (options.includeRest !== false && set.restAfterSeconds) parts.push(formatRest(set.restAfterSeconds, options.restPrefix))
   if (set.rpe != null) parts.push(`RPE ${set.rpe}`)
+  const executionCue = normalizedExecutionCue(set.executionCue)
+  if (executionCue) parts.push(executionCue)
 
   return parts.length > 0 ? parts.join(" · ") : "Sin datos de carga"
 }
@@ -228,6 +230,7 @@ function formatNumber(value: number) {
 
 function allSetsEquivalent(sets: PreviousLoadSet[]) {
   if (sets.length < 2) return false
+  if (sets.some((set) => normalizedExecutionCue(set.executionCue))) return false
   const [first, ...rest] = sets
   return rest.every((set) =>
     set.targetReps === first.targetReps &&
@@ -239,4 +242,9 @@ function allSetsEquivalent(sets: PreviousLoadSet[]) {
     set.restAfterSeconds === first.restAfterSeconds &&
     set.toFailure === first.toFailure,
   )
+}
+
+function normalizedExecutionCue(value?: string | null) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
 }

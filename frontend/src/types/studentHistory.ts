@@ -86,6 +86,7 @@ export type StudentExerciseOccurrenceSet = {
   rpe: number | null
   toFailure: boolean
   notes: string | null
+  executionCue: string | null
 }
 
 export type StudentExerciseOccurrencePage =

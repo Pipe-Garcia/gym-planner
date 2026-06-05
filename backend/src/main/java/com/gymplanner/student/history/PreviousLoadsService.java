@@ -143,6 +143,7 @@ public class PreviousLoadsService {
                 set.getTargetDistanceMeters(),
                 set.getRestAfterSeconds(),
                 set.getRpe(),
-                set.isToFailure());
+                set.isToFailure(),
+                set.getExecutionCue());
     }
 }

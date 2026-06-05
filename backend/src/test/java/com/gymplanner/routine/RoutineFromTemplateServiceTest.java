@@ -122,7 +122,21 @@ class RoutineFromTemplateServiceTest {
         assertThat(set.restAfterSeconds()).isEqualTo(90);
         assertThat(set.rpe()).isEqualTo(8);
         assertThat(set.tempo()).isEqualTo("3010");
+        assertThat(set.executionCue()).isEqualTo("Parcial largo");
         assertThat(set.setKind()).isEqualTo(SetKind.WARMUP);
+    }
+
+    @Test
+    void templateAndRoutineSetsStoreAndReturnExecutionCue() {
+        Fixture fixture = fixture();
+
+        var template = templateService.get(1L, fixture.templateId);
+        assertThat(template.days().get(0).blocks().get(0).exercises().get(0).sets().get(0).executionCue())
+                .isEqualTo("Parcial largo");
+
+        var routine = fromTemplateService.createFromTemplate(1L, 1L, new CreateRoutineFromTemplateRequest(fixture.studentId, fixture.templateId, null, LocalDate.now(), null, null, RoutineStatus.ACTIVE));
+        assertThat(blocks(routine).get(0).exercises().get(0).sets().get(0).executionCue())
+                .isEqualTo("Parcial largo");
     }
 
     @Test
@@ -158,7 +172,7 @@ class RoutineFromTemplateServiceTest {
 
     private TemplateBlockInput block(String title, BlockStructuralType type, BlockPurpose purpose, Integer duration, Long exerciseId, SetKind kind) {
         return new TemplateBlockInput(null, title, type, purpose, duration, null, "Notas bloque", List.of(new TemplateExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
-                new TemplateExerciseSetInput(null, kind, 8, null, null, new BigDecimal("60.50"), null, null, 90, "3010", 8, "Set 1", false),
+                new TemplateExerciseSetInput(null, kind, 8, null, null, new BigDecimal("60.50"), null, null, 90, "3010", "Parcial largo", 8, "Set 1", false),
                 new TemplateExerciseSetInput(null, SetKind.NORMAL, 10, null, null, new BigDecimal("55.00"), null, null, 60, null, null, null, false)
         ))));
     }

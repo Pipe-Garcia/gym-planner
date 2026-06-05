@@ -158,6 +158,35 @@ class WhatsAppTextServiceTest {
     }
 
     @Test
+    void whatsapp_collapsesIdenticalSetsWithoutExecutionCue() {
+        Fixture fixture = fixtureWithSingleStandardBlock("Fuerza sin indicacion", identicalSets(12, new BigDecimal("20"), 3));
+
+        String text = whatsAppTextService.generateText(fixture.routineId(), 1L);
+
+        assertThat(text)
+                .contains("Fuerza sin indicacion")
+                .contains("3 series × 12 reps · 20 kg")
+                .doesNotContain("Serie 1 ·")
+                .doesNotContain("recorrido completo");
+    }
+
+    @Test
+    void whatsapp_expandsIdenticalSetsWithDifferentExecutionCue() {
+        Fixture fixture = fixtureWithSingleStandardBlock("Curl parcial", List.of(
+                set(12, new BigDecimal("20"), 60, "recorrido completo"),
+                set(12, new BigDecimal("20"), 60, "parcial largo"),
+                set(12, new BigDecimal("20"), 60, "parcial corto")));
+
+        String text = whatsAppTextService.generateText(fixture.routineId(), 1L);
+
+        assertThat(text).contains(
+                "Serie 1 · 12 reps · 20 kg · descanso 1 min · recorrido completo",
+                "Serie 2 · 12 reps · 20 kg · descanso 1 min · parcial largo",
+                "Serie 3 · 12 reps · 20 kg · descanso 1 min · parcial corto"
+        );
+    }
+
+    @Test
     void whatsapp_expandsSets_inPyramidBlock() {
         Fixture fixture = fixture();
 
@@ -276,6 +305,43 @@ class WhatsAppTextServiceTest {
         return new Fixture(studentId, routineId);
     }
 
+    private Fixture fixtureWithSingleStandardBlock(String blockTitle, List<RoutineExerciseSetInput> sets) {
+        Long studentId = studentService.create(1L, new CreateStudentRequest(
+                "Ana",
+                "Cue",
+                null,
+                "555",
+                null,
+                null,
+                "Fuerza",
+                "Tecnica",
+                "Intermedio",
+                null,
+                LocalDate.now())).id();
+        Long exerciseId = exerciseService.create(1L, new CreateExerciseRequest(
+                "Curl WhatsApp " + System.nanoTime(),
+                "Desc",
+                null,
+                MeasurementType.REPS_WEIGHT,
+                null,
+                null,
+                List.of())).id();
+        Long routineId = routineService.createFromScratch(1L, 1L, new CreateRoutineFromScratchRequest(
+                studentId,
+                "Rutina indicaciones WhatsApp",
+                "Fuerza",
+                RoutineStatus.ACTIVE,
+                LocalDate.of(2026, 5, 12),
+                null,
+                "No publicar este texto interno",
+                List.of(new RoutineDayInput(null, null, "Dia unico", null, List.of(
+                        block("Entrada tecnica", BlockStructuralType.STANDARD, BlockPurpose.WARMUP, null, exerciseId, null, identicalSets(8, new BigDecimal("0"), 1)),
+                        block(blockTitle, BlockStructuralType.STANDARD, BlockPurpose.MAIN_LIFT, null, exerciseId, null, sets),
+                        block("Salida tecnica", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, null, exerciseId, null, identicalSets(8, new BigDecimal("0"), 1))
+                ))))).id();
+        return new Fixture(studentId, routineId);
+    }
+
     private RoutineDayInput day(Long exerciseId) {
         return day(exerciseId, "Espalda neutra");
     }
@@ -315,6 +381,10 @@ class WhatsAppTextServiceTest {
 
     private RoutineExerciseSetInput set(int reps, BigDecimal weight, int restSeconds) {
         return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null, weight, null, null, restSeconds, null, null, null, false);
+    }
+
+    private RoutineExerciseSetInput set(int reps, BigDecimal weight, int restSeconds, String executionCue) {
+        return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null, weight, null, null, restSeconds, null, executionCue, null, null, false);
     }
 
     private void addInjury(Long studentId, String bodyArea, String description) {

@@ -6,6 +6,11 @@ import type { SetFormValue } from "@/schemas/template.schema"
 import { cn } from "@/lib/utils"
 import type { MeasurementType } from "@/types/exercise"
 
+function normalizedCue(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
 function allSetsAreEqual(sets: SetFormValue[]): boolean {
   if (sets.length <= 1) return true
   const [first, ...rest] = sets
@@ -16,6 +21,7 @@ function allSetsAreEqual(sets: SetFormValue[]): boolean {
       set.restAfterSeconds === first.restAfterSeconds &&
       set.targetTimeSeconds === first.targetTimeSeconds &&
       set.targetDistanceMeters === first.targetDistanceMeters &&
+      normalizedCue(set.executionCue) === normalizedCue(first.executionCue) &&
       (set.setKind ?? "NORMAL") === "NORMAL",
   )
 }

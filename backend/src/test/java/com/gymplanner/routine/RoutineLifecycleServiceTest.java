@@ -152,6 +152,18 @@ class RoutineLifecycleServiceTest {
     }
 
     @Test
+    void finishAndCreateNext_copiesExecutionCue() {
+        Fixture fixture = fixture(RoutineStatus.ACTIVE, new BigDecimal("80.00"));
+
+        var response = lifecycleService.finishAndCreateNext(1L, 1L, request(fixture.routineId, "DRAFT", null, true, false, null));
+        Routine original = routineRepository.findByIdWithFullStructure(fixture.routineId).orElseThrow();
+        Routine next = routineRepository.findByIdWithFullStructure(response.newRoutine().id()).orElseThrow();
+
+        assertThat(firstSet(original).getExecutionCue()).isEqualTo("Recorrido completo");
+        assertThat(firstSet(next).getExecutionCue()).isEqualTo("Recorrido completo");
+    }
+
+    @Test
     void weightAdjustment_roundsNearestWithHalfUp() {
         assertAdjustedWeight("30.00", 5.0, 2.5, "32.50", 1);
         assertAdjustedWeight("40.00", 5.0, 2.5, "42.50", 1);
@@ -161,6 +173,18 @@ class RoutineLifecycleServiceTest {
         assertAdjustedWeight("80.00", 5.0, null, "84.00", 1);
         assertAdjustedWeight("100.00", -10.0, 2.5, "90.00", 1);
         assertAdjustedWeight(null, 5.0, 2.5, null, 0);
+    }
+
+    @Test
+    void weightAdjustmentLeavesExecutionCueIntact() {
+        Routine routine = routineWithWeight(new BigDecimal("80.00"));
+        firstSet(routine).setExecutionCue("Parcial corto");
+
+        int adjusted = weightAdjustService.applyAdjustment(routine, RoutineWeightAdjustmentScopeType.ROUTINE, 5.0, 2.5);
+
+        assertThat(adjusted).isEqualTo(1);
+        assertThat(firstSet(routine).getTargetWeightKg()).isEqualByComparingTo("85.00");
+        assertThat(firstSet(routine).getExecutionCue()).isEqualTo("Parcial corto");
     }
 
     @Test
@@ -317,7 +341,7 @@ class RoutineLifecycleServiceTest {
     private RoutineBlockInput block(String title, BlockPurpose purpose, Long exerciseId, BigDecimal weight) {
         return new RoutineBlockInput(null, title, BlockStructuralType.STANDARD, purpose, null, null, null, List.of(
                 new RoutineExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
-                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, weight, null, null, 90, "3010", 8, "Set pesado", false)
+                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, weight, null, null, 90, "3010", "Recorrido completo", 8, "Set pesado", false)
                 ))
         ));
     }

@@ -9,7 +9,8 @@ public record PdfExerciseRowDto(
         String tagsLabel,
         String exerciseNotes,
         List<String> cells,
-        List<String> pdfCells) {
+        List<String> pdfCells,
+        String executionCue) {
 
     public PdfExerciseRowDto(
             boolean spanRow,
@@ -18,6 +19,17 @@ public record PdfExerciseRowDto(
             String tagsLabel,
             String exerciseNotes,
             List<String> cells) {
-        this(spanRow, rowspan, exerciseName, tagsLabel, exerciseNotes, cells, cells);
+        this(spanRow, rowspan, exerciseName, tagsLabel, exerciseNotes, cells, cells, null);
+    }
+
+    public PdfExerciseRowDto(
+            boolean spanRow,
+            int rowspan,
+            String exerciseName,
+            String tagsLabel,
+            String exerciseNotes,
+            List<String> cells,
+            List<String> pdfCells) {
+        this(spanRow, rowspan, exerciseName, tagsLabel, exerciseNotes, cells, pdfCells, null);
     }
 }

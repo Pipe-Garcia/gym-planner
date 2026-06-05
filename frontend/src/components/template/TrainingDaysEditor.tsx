@@ -140,6 +140,7 @@ function cloneDay(day: DayInput, orderIndex: number): DayInput {
           targetDistanceMeters: set.targetDistanceMeters,
           restAfterSeconds: set.restAfterSeconds,
           tempo: set.tempo,
+          executionCue: set.executionCue ?? null,
           rpe: set.rpe,
           notes: set.notes,
           toFailure: set.toFailure,

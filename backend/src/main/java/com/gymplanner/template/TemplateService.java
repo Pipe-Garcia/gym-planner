@@ -201,6 +201,7 @@ public class TemplateService {
             set.setTargetDistanceMeters(input.targetDistanceMeters());
             set.setRestAfterSeconds(input.restAfterSeconds());
             set.setTempo(clean(input.tempo()));
+            set.setExecutionCue(clean(input.executionCue()));
             set.setRpe(input.rpe());
             set.setNotes(clean(input.notes()));
             set.setToFailure(Boolean.TRUE.equals(input.toFailure()));
@@ -258,6 +259,7 @@ public class TemplateService {
         target.setTargetDistanceMeters(source.getTargetDistanceMeters());
         target.setRestAfterSeconds(source.getRestAfterSeconds());
         target.setTempo(source.getTempo());
+        target.setExecutionCue(source.getExecutionCue());
         target.setRpe(source.getRpe());
         target.setNotes(source.getNotes());
         target.setToFailure(source.isToFailure());

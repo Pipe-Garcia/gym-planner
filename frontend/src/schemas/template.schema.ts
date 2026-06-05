@@ -7,6 +7,12 @@ const nullableNumber = z.preprocess((value) => (isEmpty(value) ? null : value), 
 const nullablePositiveInt = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().int().positive().nullable())
 const nullableNonNegativeInt = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().int().nonnegative().nullable())
 const nullableText = z.preprocess((value) => (value === "" || value === undefined ? null : value), z.string().nullable())
+const nullableExecutionCue = z.preprocess((value) => {
+  if (value === undefined || value === null) return null
+  if (typeof value !== "string") return value
+  const trimmed = value.trim()
+  return trimmed === "" ? null : trimmed
+}, z.string().max(120).nullable())
 const nullablePositiveNumber = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().positive().nullable())
 const nullableRpe = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().int().min(1).max(10).nullable())
 const technicalPositiveInt = z.preprocess((value) => (isEmpty(value) ? 1 : value), z.number().int().positive())
@@ -25,6 +31,7 @@ export const setSchema = z.object({
   targetDistanceMeters: nullableNumber.optional(),
   restAfterSeconds: nullableNonNegativeInt,
   tempo: nullableText,
+  executionCue: nullableExecutionCue.optional(),
   rpe: nullableRpe,
   notes: nullableText,
   toFailure: z.preprocess((value) => (isEmpty(value) ? false : value), z.boolean()),
