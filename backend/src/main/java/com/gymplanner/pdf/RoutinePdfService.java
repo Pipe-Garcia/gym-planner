@@ -163,16 +163,19 @@ public class RoutinePdfService {
         // En ese caso fusionamos las columnas variables en una sola "Objetivo" para que cada ejercicio
         // pueda mostrar su info sin perder datos por no encajar en la columna del primero.
         boolean isMixed = !isCircuit && hasMixedMeasurements(exercises);
+        boolean isStandard = block.getStructuralType() == BlockStructuralType.STANDARD;
+        boolean isStandardTable = !isCircuit && !isMixed && isStandard;
         boolean collapsed = !isCircuit
-                && block.getStructuralType() == BlockStructuralType.STANDARD
+                && isStandard
                 && exercises.stream().allMatch(exercise -> allSetsAreEquivalent(orderedSets(exercise)));
+        boolean standardHasExpandedExercise = isStandardTable && !collapsed;
 
         List<String> columns;
         if (isCircuit) {
             columns = circuitColumns(firstMeasurement);
         } else if (isMixed) {
             columns = mixedColumns(collapsed);
-        } else if (collapsed) {
+        } else if (isStandardTable && !standardHasExpandedExercise) {
             columns = collapsedColumns(firstMeasurement);
         } else {
             columns = expandedColumns(firstMeasurement);
@@ -184,8 +187,10 @@ public class RoutinePdfService {
                 rows.add(circuitRow(exercise, firstMeasurement));
             } else if (isMixed) {
                 rows.addAll(mixedExerciseRows(exercise, collapsed));
+            } else if (isStandardTable) {
+                rows.addAll(mapStandardExerciseRows(exercise, firstMeasurement, standardHasExpandedExercise));
             } else {
-                rows.addAll(mapExerciseRows(exercise, firstMeasurement, collapsed));
+                rows.addAll(mapExerciseRows(exercise, firstMeasurement, false));
             }
         }
 
@@ -199,7 +204,17 @@ public class RoutinePdfService {
                 rows);
     }
 
+    private List<PdfExerciseRowDto> mapStandardExerciseRows(RoutineExercise exercise, MeasurementType measurement, boolean blockHasExpandedExercise) {
+        List<RoutineExerciseSet> sets = orderedSets(exercise);
+        boolean exerciseCollapsed = allSetsAreEquivalent(sets);
+        return mapExerciseRows(exercise, measurement, exerciseCollapsed, blockHasExpandedExercise && exerciseCollapsed);
+    }
+
     private List<PdfExerciseRowDto> mapExerciseRows(RoutineExercise exercise, MeasurementType measurement, boolean collapsed) {
+        return mapExerciseRows(exercise, measurement, collapsed, false);
+    }
+
+    private List<PdfExerciseRowDto> mapExerciseRows(RoutineExercise exercise, MeasurementType measurement, boolean collapsed, boolean collapsedInExpandedTable) {
         List<RoutineExerciseSet> sets = orderedSets(exercise);
         String tagsLabel = "";
         String sanitizedNotes = sanitizeNotes(exercise.getExerciseNotes());
@@ -209,7 +224,9 @@ public class RoutinePdfService {
         }
 
         if (collapsed) {
-            return List.of(new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, collapsedCells(sets, measurement)));
+            List<String> cells = collapsedCells(sets, measurement);
+            List<String> pdfCells = collapsedInExpandedTable ? collapsedPdfCellsInExpandedTable(sets, measurement) : cells;
+            return List.of(new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, cells, pdfCells));
         }
 
         int rowspan = sets.size();
@@ -223,7 +240,8 @@ public class RoutinePdfService {
                     tagsLabel,
                     sanitizedNotes,
                     expandedCells(set, measurement),
-                    expandedPdfCells(set, measurement)));
+                    expandedPdfCells(set, measurement),
+                    normalizedExecutionCue(set)));
         }
         return rows;
     }
@@ -265,6 +283,9 @@ public class RoutinePdfService {
     }
 
     private boolean allSetsAreEquivalent(List<RoutineExerciseSet> sets) {
+        if (sets.stream().anyMatch(set -> normalizedExecutionCue(set) != null)) {
+            return false;
+        }
         if (sets.size() <= 1) return true;
         RoutineExerciseSet first = sets.getFirst();
         return sets.stream().skip(1).allMatch(set ->
@@ -339,7 +360,7 @@ public class RoutinePdfService {
             String objective = circuitObjectiveLabel(set, measurement);
             String rest = plainTime(set.getRestAfterSeconds());
             List<String> cells = List.of(String.valueOf(set.getSetNumber()), objective, rest);
-            List<String> pdfCells = List.of(serieLabel(set.getSetNumber()), objective, rest);
+            List<String> pdfCells = List.of(serieLabel(set), objective, rest);
             rows.add(new PdfExerciseRowDto(
                     i == 0,
                     rowspan,
@@ -347,7 +368,8 @@ public class RoutinePdfService {
                     tagsLabel,
                     sanitizedNotes,
                     cells,
-                    pdfCells));
+                    pdfCells,
+                    normalizedExecutionCue(set)));
         }
         return rows;
     }
@@ -385,6 +407,15 @@ public class RoutinePdfService {
         };
     }
 
+    private List<String> collapsedPdfCellsInExpandedTable(List<RoutineExerciseSet> sets, MeasurementType measurement) {
+        List<String> cells = new ArrayList<>(collapsedCells(sets, measurement));
+        if (!cells.isEmpty()) {
+            int count = sets.size();
+            cells.set(0, count + (count == 1 ? " serie" : " series"));
+        }
+        return cells;
+    }
+
     /**
      * Modo expandido (pirámide, drop set, etc.): los headers son "Serie",
      * "Reps", "Peso", "Descanso". Las celdas usan los valores sin las
@@ -403,7 +434,7 @@ public class RoutinePdfService {
     private List<String> expandedPdfCells(RoutineExerciseSet set, MeasurementType measurement) {
         List<String> cells = new ArrayList<>(expandedCells(set, measurement));
         if (!cells.isEmpty()) {
-            cells.set(0, serieLabel(set.getSetNumber()));
+            cells.set(0, serieLabel(set));
         }
         return cells;
     }
@@ -455,6 +486,20 @@ public class RoutinePdfService {
             case 10 -> "Décima serie";
             default -> "Serie " + setNumber;
         };
+    }
+
+    private String serieLabel(RoutineExerciseSet set) {
+        String label = serieLabel(set.getSetNumber());
+        String executionCue = normalizedExecutionCue(set);
+        return executionCue == null ? label : label + " · " + executionCue;
+    }
+
+    private String normalizedExecutionCue(RoutineExerciseSet set) {
+        return normalizedExecutionCue(set.getExecutionCue());
+    }
+
+    private String normalizedExecutionCue(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     /* ── Labels "con palabras" — usados en circuito y WhatsApp ─────────── */

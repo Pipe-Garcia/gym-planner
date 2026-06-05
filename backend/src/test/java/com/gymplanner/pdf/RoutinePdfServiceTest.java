@@ -202,6 +202,79 @@ class RoutinePdfServiceTest {
     }
 
     @Test
+    void pdf_collapsesIdenticalSetsWithoutExecutionCue() {
+        Fixture fixture = fixtureWithSingleStandardBlock("Fuerza sin indicacion", identicalSets(new BigDecimal("20"), 12, 3));
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("Fuerza sin indicacion")
+                .contains(">Series<")
+                .contains("<td>3</td>")
+                .contains("<td>12</td>")
+                .contains("20 kg")
+                .doesNotContain("Primera serie")
+                .doesNotContain("Segunda serie")
+                .doesNotContain("Tercera serie");
+    }
+
+    @Test
+    void pdf_expandsIdenticalSetsWithDifferentExecutionCue() {
+        Fixture fixture = fixtureWithSingleStandardBlock("Curl parcial", List.of(
+                set(12, new BigDecimal("20"), 60, "recorrido completo"),
+                set(12, new BigDecimal("20"), 60, "parcial largo"),
+                set(12, new BigDecimal("20"), 60, "parcial corto")));
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("Curl parcial")
+                .contains(">Serie<")
+                .contains("Primera serie · recorrido completo")
+                .contains("Segunda serie · parcial largo")
+                .contains("Tercera serie · parcial corto");
+    }
+
+    @Test
+    void pdf_standardBlockCollapsesPerExerciseWhenAnotherExerciseExpands() {
+        Fixture fixture = fixtureWithMixedStandardBlock(
+                List.of(
+                        set(12, new BigDecimal("20"), 60, "recorrido completo"),
+                        set(12, new BigDecimal("20"), 60, "parcial largo"),
+                        set(12, new BigDecimal("20"), 60, "parcial corto")),
+                identicalSets(new BigDecimal("35"), 10, 3));
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("Fuerza mixta")
+                .contains(">Serie<")
+                .contains("Press Militar con Barra")
+                .contains("Primera serie · recorrido completo")
+                .contains("Segunda serie · parcial largo")
+                .contains("Tercera serie · parcial corto")
+                .contains("Remo con mancuerna")
+                .contains("<td>3 series</td>")
+                .contains("35 kg");
+    }
+
+    @Test
+    void pdf_standardBlockWithAllExercisesEquivalentUsesCollapsedHeader() {
+        Fixture fixture = fixtureWithMixedStandardBlock(
+                identicalSets(new BigDecimal("20"), 12, 3),
+                identicalSets(new BigDecimal("35"), 10, 3));
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("Fuerza mixta")
+                .contains(">Series<")
+                .doesNotContain("Primera serie")
+                .doesNotContain("<td>3 series</td>");
+        assertThat(countOccurrences(html, "<td>3</td>")).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
     void pdf_expandsSets_inPyramidBlock() {
         Fixture fixture = fixture();
 
@@ -353,6 +426,91 @@ class RoutinePdfServiceTest {
         return new Fixture(studentId, routineId);
     }
 
+    private Fixture fixtureWithSingleStandardBlock(String blockTitle, List<RoutineExerciseSetInput> sets) {
+        Long studentId = studentService.create(1L, new CreateStudentRequest(
+                "Ana",
+                "Cue",
+                null,
+                "555",
+                null,
+                null,
+                "Fuerza",
+                "Tecnica",
+                "Intermedio",
+                null,
+                LocalDate.now())).id();
+        Long exerciseId = exerciseService.create(1L, new CreateExerciseRequest(
+                "Curl PDF " + System.nanoTime(),
+                "Desc",
+                null,
+                MeasurementType.REPS_WEIGHT,
+                null,
+                null,
+                List.of())).id();
+        Long routineId = routineService.createFromScratch(1L, 1L, new CreateRoutineFromScratchRequest(
+                studentId,
+                "Rutina indicaciones PDF",
+                "Fuerza",
+                RoutineStatus.ACTIVE,
+                LocalDate.of(2026, 5, 12),
+                null,
+                "No publicar este texto interno",
+                List.of(new RoutineDayInput(null, null, "Dia unico", null, List.of(
+                        block("Entrada tecnica", BlockStructuralType.STANDARD, BlockPurpose.WARMUP, null, exerciseId, null, sets(new BigDecimal("0"), 8)),
+                        block(blockTitle, BlockStructuralType.STANDARD, BlockPurpose.MAIN_LIFT, null, exerciseId, null, sets),
+                        block("Salida tecnica", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, null, exerciseId, null, sets(new BigDecimal("0"), 8))
+                ))))).id();
+        return new Fixture(studentId, routineId);
+    }
+
+    private Fixture fixtureWithMixedStandardBlock(List<RoutineExerciseSetInput> firstExerciseSets, List<RoutineExerciseSetInput> secondExerciseSets) {
+        Long studentId = studentService.create(1L, new CreateStudentRequest(
+                "Ana",
+                "Cue",
+                null,
+                "555",
+                null,
+                null,
+                "Fuerza",
+                "Tecnica",
+                "Intermedio",
+                null,
+                LocalDate.now())).id();
+        Long firstExerciseId = exerciseService.create(1L, new CreateExerciseRequest(
+                "Press Militar con Barra",
+                "Desc",
+                null,
+                MeasurementType.REPS_WEIGHT,
+                null,
+                null,
+                List.of())).id();
+        Long secondExerciseId = exerciseService.create(1L, new CreateExerciseRequest(
+                "Remo con mancuerna",
+                "Desc",
+                null,
+                MeasurementType.REPS_WEIGHT,
+                null,
+                null,
+                List.of())).id();
+        Long routineId = routineService.createFromScratch(1L, 1L, new CreateRoutineFromScratchRequest(
+                studentId,
+                "Rutina standard mixta",
+                "Fuerza",
+                RoutineStatus.ACTIVE,
+                LocalDate.of(2026, 5, 12),
+                null,
+                "No publicar este texto interno",
+                List.of(new RoutineDayInput(null, null, "Dia unico", null, List.of(
+                        block("Entrada tecnica", BlockStructuralType.STANDARD, BlockPurpose.WARMUP, null, firstExerciseId, null, sets(new BigDecimal("0"), 8)),
+                        new RoutineBlockInput(null, "Fuerza mixta", BlockStructuralType.STANDARD, BlockPurpose.MAIN_LIFT, null, null, null, List.of(
+                                new RoutineExerciseInput(firstExerciseId, null, null, firstExerciseSets),
+                                new RoutineExerciseInput(secondExerciseId, null, null, secondExerciseSets)
+                        )),
+                        block("Salida tecnica", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, null, firstExerciseId, null, sets(new BigDecimal("0"), 8))
+                ))))).id();
+        return new Fixture(studentId, routineId);
+    }
+
     private RoutineDayInput day(Long exerciseId) {
         return day(exerciseId, "Espalda neutra");
     }
@@ -397,6 +555,10 @@ class RoutinePdfServiceTest {
         return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null, weight, null, null, restSeconds, null, null, null, false);
     }
 
+    private RoutineExerciseSetInput set(int reps, BigDecimal weight, int restSeconds, String executionCue) {
+        return new RoutineExerciseSetInput(null, SetKind.NORMAL, reps, null, null, weight, null, null, restSeconds, null, executionCue, null, null, false);
+    }
+
     private void addInjury(Long studentId, String bodyArea, String description) {
         Student student = studentRepository.findById(studentId).orElseThrow();
         StudentInjury injury = new StudentInjury();
@@ -421,6 +583,16 @@ class RoutinePdfServiceTest {
         try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
             return new PDFTextStripper().getText(doc);
         }
+    }
+
+    private int countOccurrences(String value, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = value.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 
     private record Fixture(Long studentId, Long routineId) {

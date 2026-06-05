@@ -161,7 +161,8 @@ public class WhatsAppTextService {
 
         List<String> details = rows.stream().map(this::setDetails).toList();
         boolean allEqual = details.stream().distinct().count() == 1;
-        if (allEqual && !isCircuit) {
+        boolean noneWithExecutionCue = rows.stream().noneMatch(row -> StringUtils.hasText(row.executionCue()));
+        if (allEqual && !isCircuit && noneWithExecutionCue) {
             // Colapsamos en "N series × detalles".
             String first = rows.getFirst().cells().isEmpty() ? "" : rows.getFirst().cells().getFirst();
             String detailsStr = details.getFirst();
@@ -182,6 +183,10 @@ public class WhatsAppTextService {
 
         String first = row.cells().getFirst();
         String details = setDetails(row);
+
+        if (StringUtils.hasText(row.executionCue())) {
+            return "Serie " + first + " · " + details;
+        }
 
         // Standard colapsado: la primera celda es el número de series.
         // Ahora viene solo el número ("3"), antes era "3 series".
@@ -209,7 +214,11 @@ public class WhatsAppTextService {
             String serieCell = rows.get(i).cells().isEmpty()
                     ? String.valueOf(i + 1)
                     : rows.get(i).cells().getFirst();
-            sb.append("Serie ").append(serieCell).append(": ").append(setDetails(rows.get(i)));
+            if (StringUtils.hasText(rows.get(i).executionCue())) {
+                sb.append("Serie ").append(serieCell).append(" · ").append(setDetails(rows.get(i)));
+            } else {
+                sb.append("Serie ").append(serieCell).append(": ").append(setDetails(rows.get(i)));
+            }
         }
         return sb.toString();
     }
@@ -239,6 +248,9 @@ public class WhatsAppTextService {
             if (StringUtils.hasText(labeled)) {
                 labeledValues.add(labeled);
             }
+        }
+        if (StringUtils.hasText(row.executionCue())) {
+            labeledValues.add(row.executionCue().trim());
         }
         if (labeledValues.isEmpty()) return "-";
         return String.join(" · ", labeledValues);
