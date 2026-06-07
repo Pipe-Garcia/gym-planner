@@ -110,6 +110,56 @@ class RoutineFromTemplateServiceTest {
         assertThat(blocks(routine)).extracting("structuralType").contains(BlockStructuralType.CIRCUIT, BlockStructuralType.PYRAMID);
         assertThat(blocks(routine)).extracting("purpose").contains(BlockPurpose.CONDITIONING, BlockPurpose.MAIN_LIFT);
         assertThat(blocks(routine).get(2).totalDurationSeconds()).isEqualTo(720);
+        assertThat(blocks(routine)).filteredOn(block -> block.structuralType() != BlockStructuralType.GROUPED_SET)
+                .extracting("roundRestSeconds")
+                .containsOnlyNulls();
+    }
+
+    @Test
+    void groupedSetBlockCanBeStoredInTemplateAndCopiedToRoutine() {
+        Long studentId = studentService.create(1L, new CreateStudentRequest("Ana", "Grouped", null, "555", null, null, "Futbol", "Fuerza", "Intermedio", null, LocalDate.now())).id();
+        Long exerciseId = exerciseService.create(1L, new CreateExerciseRequest("Press grouped", "Desc", "Notas", MeasurementType.REPS_WEIGHT, null, null, List.of())).id();
+
+        Long templateId = templateService.create(1L, 1L, new CreateTemplateRequest("Plantilla grouped", "Desc", "Futbol", "Fuerza", "Intermedio", 60, "Notas", List.of(day("Dia 1",
+                block("Entrada", BlockStructuralType.STANDARD, BlockPurpose.ACTIVATION, null, exerciseId, SetKind.NORMAL),
+                groupedBlock("Triserie - Hombros", exerciseId, 3, 90),
+                block("Salida", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, null, exerciseId, SetKind.NORMAL)
+        )))).id();
+
+        var template = templateService.get(1L, templateId);
+        var groupedTemplateBlock = template.days().get(0).blocks().get(1);
+        assertThat(groupedTemplateBlock.structuralType()).isEqualTo(BlockStructuralType.GROUPED_SET);
+        assertThat(groupedTemplateBlock.targetRounds()).isEqualTo(3);
+        assertThat(groupedTemplateBlock.roundRestSeconds()).isEqualTo(90);
+
+        var routine = fromTemplateService.createFromTemplate(1L, 1L, new CreateRoutineFromTemplateRequest(studentId, templateId, null, LocalDate.now(), null, null, RoutineStatus.ACTIVE));
+        var groupedRoutineBlock = routine.days().get(0).blocks().get(1);
+        assertThat(groupedRoutineBlock.structuralType()).isEqualTo(BlockStructuralType.GROUPED_SET);
+        assertThat(groupedRoutineBlock.targetRounds()).isEqualTo(3);
+        assertThat(groupedRoutineBlock.roundRestSeconds()).isEqualTo(90);
+        assertThat(routine.days().get(0).blocks()).filteredOn(block -> block.structuralType() != BlockStructuralType.GROUPED_SET)
+                .extracting("roundRestSeconds")
+                .containsOnlyNulls();
+    }
+
+    @Test
+    void duplicateTemplateCopiesGroupedSetFields() {
+        Long exerciseId = exerciseService.create(1L, new CreateExerciseRequest("Remo grouped", "Desc", "Notas", MeasurementType.REPS_WEIGHT, null, null, List.of())).id();
+
+        Long templateId = templateService.create(1L, 1L, new CreateTemplateRequest("Template duplicable grouped", "Desc", "Futbol", "Fuerza", "Intermedio", 60, "Notas", List.of(day("Dia 1",
+                block("Entrada", BlockStructuralType.STANDARD, BlockPurpose.ACTIVATION, null, exerciseId, SetKind.NORMAL),
+                groupedBlock("Biserie - Espalda", exerciseId, 4, 120),
+                block("Salida", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, null, exerciseId, SetKind.NORMAL)
+        )))).id();
+
+        var copy = templateService.duplicate(1L, 1L, templateId);
+        var groupedCopyBlock = copy.days().get(0).blocks().get(1);
+        assertThat(groupedCopyBlock.structuralType()).isEqualTo(BlockStructuralType.GROUPED_SET);
+        assertThat(groupedCopyBlock.targetRounds()).isEqualTo(4);
+        assertThat(groupedCopyBlock.roundRestSeconds()).isEqualTo(120);
+        assertThat(copy.days().get(0).blocks()).filteredOn(block -> block.structuralType() != BlockStructuralType.GROUPED_SET)
+                .extracting("roundRestSeconds")
+                .containsOnlyNulls();
     }
 
     @Test
@@ -174,6 +224,12 @@ class RoutineFromTemplateServiceTest {
         return new TemplateBlockInput(null, title, type, purpose, duration, null, "Notas bloque", List.of(new TemplateExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
                 new TemplateExerciseSetInput(null, kind, 8, null, null, new BigDecimal("60.50"), null, null, 90, "3010", "Parcial largo", 8, "Set 1", false),
                 new TemplateExerciseSetInput(null, SetKind.NORMAL, 10, null, null, new BigDecimal("55.00"), null, null, 60, null, null, null, false)
+        ))));
+    }
+
+    private TemplateBlockInput groupedBlock(String title, Long exerciseId, Integer targetRounds, Integer roundRestSeconds) {
+        return new TemplateBlockInput(null, title, BlockStructuralType.GROUPED_SET, BlockPurpose.MAIN_LIFT, null, targetRounds, roundRestSeconds, "Notas bloque", List.of(new TemplateExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
+                new TemplateExerciseSetInput(null, SetKind.NORMAL, 10, null, null, new BigDecimal("60.50"), null, null, null, "3010", null, 8, "Set grouped", false)
         ))));
     }
 

@@ -2,6 +2,7 @@ import type { PageResponse } from "@/types/api"
 import type { Exercise, MeasurementType } from "@/types/exercise"
 
 export type BlockStructuralType = "STANDARD" | "CIRCUIT" | "PYRAMID" | "REVERSE_PYRAMID" | "DROP_SET" | "REST_PAUSE" | "CLUSTER"
+export type EditableBlockStructuralType = BlockStructuralType | "GROUPED_SET"
 export type BlockPurpose = "WARMUP" | "ACTIVATION" | "MAIN_LIFT" | "ACCESSORY" | "CONDITIONING" | "CORE" | "COOLDOWN" | "OTHER"
 export type SetKind = "NORMAL" | "WARMUP" | "FAILURE" | "DROP" | "REST_PAUSE_PORTION"
 export type RoutineStatus = "ACTIVE" | "FINISHED" | "ARCHIVED" | "DRAFT"
@@ -35,10 +36,11 @@ export interface ExerciseInBlockInput {
 export interface BlockInput {
   orderIndex: number
   title: string
-  structuralType: BlockStructuralType
+  structuralType: EditableBlockStructuralType
   purpose: BlockPurpose | null
   totalDurationSeconds: number | null
   targetRounds: number | null
+  roundRestSeconds: number | null
   blockNotes: string | null
   exercises: ExerciseInBlockInput[]
 }

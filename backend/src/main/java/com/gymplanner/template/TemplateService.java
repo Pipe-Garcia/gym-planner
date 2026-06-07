@@ -160,6 +160,7 @@ public class TemplateService {
             block.setPurpose(input.purpose());
             block.setTotalDurationSeconds(input.totalDurationSeconds());
             block.setTargetRounds(input.targetRounds());
+            block.setRoundRestSeconds(input.roundRestSeconds());
             block.setBlockNotes(clean(input.blockNotes()));
             int exerciseIndex = 1;
             if (input.exercises() != null) {
@@ -230,6 +231,7 @@ public class TemplateService {
         block.setPurpose(source.getPurpose());
         block.setTotalDurationSeconds(source.getTotalDurationSeconds());
         block.setTargetRounds(source.getTargetRounds());
+        block.setRoundRestSeconds(source.getRoundRestSeconds());
         block.setBlockNotes(source.getBlockNotes());
         for (TemplateExercise sourceExercise : source.getExercises()) {
             TemplateExercise exercise = new TemplateExercise();

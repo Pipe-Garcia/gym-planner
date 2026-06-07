@@ -164,6 +164,25 @@ class RoutineLifecycleServiceTest {
     }
 
     @Test
+    void finishAndCreateNext_copiesGroupedSetFields() {
+        Fixture fixture = fixture(RoutineStatus.ACTIVE, new BigDecimal("80.00"));
+
+        var response = lifecycleService.finishAndCreateNext(1L, 1L, request(fixture.routineId, "DRAFT", null, true, false, null));
+        Routine next = routineRepository.findByIdWithFullStructure(response.newRoutine().id()).orElseThrow();
+        RoutineBlock grouped = next.getDays().stream()
+                .flatMap(day -> day.getBlocks().stream())
+                .filter(block -> block.getStructuralType() == BlockStructuralType.GROUPED_SET)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(grouped.getTargetRounds()).isEqualTo(3);
+        assertThat(grouped.getRoundRestSeconds()).isEqualTo(90);
+        assertThat(next.getDays().stream().flatMap(day -> day.getBlocks().stream()).filter(block -> block.getStructuralType() != BlockStructuralType.GROUPED_SET).toList())
+                .extracting("roundRestSeconds")
+                .containsOnlyNulls();
+    }
+
+    @Test
     void weightAdjustment_roundsNearestWithHalfUp() {
         assertAdjustedWeight("30.00", 5.0, 2.5, "32.50", 1);
         assertAdjustedWeight("40.00", 5.0, 2.5, "42.50", 1);
@@ -333,7 +352,7 @@ class RoutineLifecycleServiceTest {
     private RoutineDayInput day(String name, Long exerciseId, BigDecimal firstWeight) {
         return new RoutineDayInput(null, null, name, null, List.of(
                 block("Entrada", BlockPurpose.ACTIVATION, exerciseId, firstWeight),
-                block("Fuerza", BlockPurpose.MAIN_LIFT, exerciseId, firstWeight),
+                groupedBlock("Fuerza", exerciseId, firstWeight),
                 block("Salida", BlockPurpose.COOLDOWN, exerciseId, firstWeight)
         ));
     }
@@ -342,6 +361,14 @@ class RoutineLifecycleServiceTest {
         return new RoutineBlockInput(null, title, BlockStructuralType.STANDARD, purpose, null, null, null, List.of(
                 new RoutineExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
                         new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, weight, null, null, 90, "3010", "Recorrido completo", 8, "Set pesado", false)
+                ))
+        ));
+    }
+
+    private RoutineBlockInput groupedBlock(String title, Long exerciseId, BigDecimal weight) {
+        return new RoutineBlockInput(null, title, BlockStructuralType.GROUPED_SET, BlockPurpose.MAIN_LIFT, null, 3, 90, null, List.of(
+                new RoutineExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
+                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, weight, null, null, null, "3010", "Recorrido completo", 8, "Set pesado", false)
                 ))
         ));
     }

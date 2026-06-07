@@ -78,6 +78,7 @@ public class RoutineFromTemplateService {
         block.setPurpose(source.getPurpose());
         block.setTotalDurationSeconds(source.getTotalDurationSeconds());
         block.setTargetRounds(source.getTargetRounds());
+        block.setRoundRestSeconds(source.getRoundRestSeconds());
         block.setBlockNotes(source.getBlockNotes());
         for (TemplateExercise sourceExercise : source.getExercises()) {
             RoutineExercise exercise = new RoutineExercise();

@@ -1,10 +1,11 @@
-import type { BlockPurpose, BlockStructuralType, RoutineStatus, SetKind } from "@/types/training"
+import type { BlockPurpose, EditableBlockStructuralType, RoutineStatus, SetKind } from "@/types/training"
 import { cn } from "@/lib/utils"
 
-export function structuralTypeLabel(type?: BlockStructuralType | null) {
-  const labels: Record<BlockStructuralType, string> = {
+export function structuralTypeLabel(type?: EditableBlockStructuralType | null) {
+  const labels: Record<EditableBlockStructuralType, string> = {
     STANDARD: "Estándar",
     CIRCUIT: "Circuito",
+    GROUPED_SET: "Series agrupadas",
     PYRAMID: "Pirámide",
     REVERSE_PYRAMID: "Pirámide inversa",
     DROP_SET: "Drop set",

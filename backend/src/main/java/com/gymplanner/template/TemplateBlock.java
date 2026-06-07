@@ -18,6 +18,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.LinkedHashSet;
@@ -61,6 +62,10 @@ public class TemplateBlock {
 
     @Column(name = "target_rounds")
     private Integer targetRounds;
+
+    @Min(0)
+    @Column(name = "round_rest_seconds")
+    private Integer roundRestSeconds;
 
     @Column(name = "block_notes", columnDefinition = "TEXT")
     private String blockNotes;

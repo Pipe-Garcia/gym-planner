@@ -7,6 +7,7 @@ package com.gymplanner.shared.blocks;
 public enum BlockStructuralType {
     STANDARD,
     CIRCUIT,
+    GROUPED_SET,
     PYRAMID,
     REVERSE_PYRAMID,
     DROP_SET,

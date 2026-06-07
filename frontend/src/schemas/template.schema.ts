@@ -49,7 +49,7 @@ export const exerciseInBlockSchema = z.object({
 const blockBaseSchema = z.object({
   orderIndex: technicalPositiveInt,
   title: z.string().min(1, "El bloque debe tener un titulo").max(150),
-  structuralType: z.enum(["STANDARD", "CIRCUIT", "PYRAMID", "REVERSE_PYRAMID", "DROP_SET", "REST_PAUSE", "CLUSTER"]),
+  structuralType: z.enum(["STANDARD", "CIRCUIT", "GROUPED_SET", "PYRAMID", "REVERSE_PYRAMID", "DROP_SET", "REST_PAUSE", "CLUSTER"]),
   purpose: z
     .preprocess(
       (value) => (isEmpty(value) ? null : value),
@@ -57,14 +57,20 @@ const blockBaseSchema = z.object({
     ),
   totalDurationSeconds: nullablePositiveInt,
   targetRounds: nullablePositiveInt,
+  roundRestSeconds: nullableNonNegativeInt,
   blockNotes: nullableText,
   exercises: z.array(exerciseInBlockSchema).min(1, "El bloque debe tener al menos un ejercicio"),
 })
 
-export const blockSchema = blockBaseSchema.refine((block) => block.structuralType !== "CIRCUIT" || block.totalDurationSeconds != null, {
-  message: "Los bloques de tipo Circuito requieren duracion total",
-  path: ["totalDurationSeconds"],
-})
+export const blockSchema = blockBaseSchema
+  .refine((block) => block.structuralType !== "CIRCUIT" || block.totalDurationSeconds != null, {
+    message: "Los bloques de tipo Circuito requieren duracion total",
+    path: ["totalDurationSeconds"],
+  })
+  .refine((block) => block.structuralType !== "GROUPED_SET" || block.targetRounds != null, {
+    message: "Las series agrupadas requieren vueltas",
+    path: ["targetRounds"],
+  })
 
 const draftBlockSchema = blockBaseSchema.extend({
   exercises: z.array(exerciseInBlockSchema.extend({ sets: z.array(setSchema) })),
