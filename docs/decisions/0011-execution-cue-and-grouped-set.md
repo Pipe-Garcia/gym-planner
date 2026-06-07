@@ -110,7 +110,7 @@ Si una serie tiene `executionCue`, debe mostrarse (solo lectura) en cargas previ
 
 ## 4. Feature 2 — Series agrupadas (`GROUPED_SET`)
 
-> Esta feature se implementa **después** de `executionCue`, en su propia rama. Acá quedan fijadas las decisiones; los detalles finos de persistencia del descanso se cierran al iniciar `feature/grouped-set-blocks`.
+> Esta feature se implementa **después** de `executionCue`, en su propia rama (`feature/grouped-set-blocks`). Todas las decisiones de dominio están cerradas, incluida la persistencia del descanso de vuelta (ver 4.4, decidido tras el Prompt 0 de lectura del repo).
 
 ### 4.1 Qué es
 
@@ -121,7 +121,12 @@ Un tipo de bloque donde varios ejercicios se ejecutan como una unidad, por vuelt
 - Nuevo valor `GROUPED_SET` en el enum `BlockStructuralType` (interno, neutro).
 - Se **reusa la estructura de bloque que ya existe**: un bloque ya contiene varios ejercicios y ya tiene `targetRounds`, `title` (texto libre) y `blockNotes`.
 - Cada ejercicio del grupo lleva **una sola fila de objetivo** (ej: 10 reps · 30 kg). Las vueltas viven en `targetRounds`.
-- Migración Flyway para actualizar el `CHECK constraint` de `structural_type` en **`template_blocks` y `routine_blocks`** (las dos).
+- **Campo nuevo block-level `roundRestSeconds`** (Integer, nullable) en `TemplateBlock` y `RoutineBlock`: el descanso al terminar cada vuelta (ver 4.4).
+- Migración Flyway para actualizar el `CHECK constraint` de `structural_type` en **`template_blocks` y `routine_blocks`** (las dos) y agregar la columna `round_rest_seconds` en ambas.
+
+**Simetría con CIRCUIT.** El parámetro propio de cada tipo de bloque vive a nivel bloque: el circuito guarda su tiempo en `totalDurationSeconds`; la serie agrupada guarda su descanso en `roundRestSeconds`. Mismo nivel, mismo patrón.
+
+**Nota sobre `targetRounds` (campo dormido).** `targetRounds` ya existe en backend (entidad + DTOs + copias), pero hoy el frontend lo normaliza siempre a `null` y no se puede editar desde la UI. Para `GROUPED_SET` hay que **activarlo** como "Vueltas" en el editor (mínimo 1), no crearlo. En la práctica es estrenar un campo que ya estaba en la base.
 
 ### 4.3 Label derivado del conteo
 
@@ -132,12 +137,26 @@ La UI deriva el subtipo de la cantidad de ejercicios:
 
 El `title` del bloque sigue siendo editable, así el profesor escribe "Triserie — Hombros" sin pelear con definiciones académicas. (Nota: "Superserie = 4+" es terminología propia de esta app; en la jerga estándar "superserie" suele ser 2. Como el título es libre, no genera problema.)
 
-### 4.4 Descanso (regla V1)
+### 4.4 Descanso de vuelta (decisión cerrada)
 
-- **Sin descanso entre ejercicios** (implícito).
-- **Descanso al terminar cada vuelta.**
-- Si un caso necesita descanso entre ejercicios, se aclara en `blockNotes` por ahora.
-- El mecanismo exacto de persistencia del descanso de vuelta se define al iniciar `feature/grouped-set-blocks` (sin agregar campos nuevos si se puede evitar). Más adelante, si el cliente usa mucho la variante con descanso entre ejercicios, se evalúa un campo dedicado.
+Regla funcional V1:
+- **Sin descanso entre ejercicios** (implícito). Los ejercicios del grupo se ejecutan uno tras otro sin pausa.
+- **Descanso al terminar cada vuelta**, configurable.
+- Si un caso necesita descanso entre ejercicios, se aclara en `blockNotes` por ahora. Si el cliente lo usa mucho, se evalúa un campo dedicado en una versión futura.
+
+Persistencia (decidido tras el Prompt 0, ver más abajo el porqué):
+- El descanso de vuelta se guarda en un **campo nuevo a nivel bloque: `roundRestSeconds`** (`round_rest_seconds INTEGER NULL`), en `TemplateBlock` y `RoutineBlock`.
+- **`null`** = el profesor no cargó descanso de vuelta → no se renderiza la línea de descanso.
+- **`0`** = cargó explícitamente cero → tampoco se renderiza (equivale a sin descanso).
+- **`> 0`** = se renderiza "Descansar Xs al terminar cada vuelta".
+- Validación: nullable; si viene, `>= 0`.
+- **NO** se usa el `restAfterSeconds` del último ejercicio para este concepto.
+
+Por qué `roundRestSeconds` a nivel bloque y no el último set (Opción A vs B):
+- El descanso de vuelta pertenece **al bloque**, no a un ejercicio. Guardarlo en el último set lo ata al ejercicio que circunstancialmente quede último: agregar, borrar o reordenar ejercicios movería o perdería el valor.
+- Historial y cargas previas **cargan el ejercicio consultado solo, no a sus hermanos del bloque**, así que no podrían reconstruir el descanso de vuelta si viviera escondido en otro ejercicio.
+- El blast radius de las dos opciones es casi igual (~24-28 vs ~18-24 archivos): la opción del último set no ahorra trabajo real y mete dependencia del orden y ambigüedad. Es el mismo patrón que usan las apps del rubro (el descanso del superset/circuito cuelga del grupo, no de la última fila).
+- `restAfterSeconds` ya participa en colapso, PDF, WhatsApp, preview, cargas previas e historial como propiedad del set; darle un doble significado en `GROUPED_SET` obligaría a cada lector a "saber" del caso especial, justo donde se cuelan los bugs silenciosos.
 
 ### 4.5 Salida en PDF y WhatsApp
 
@@ -156,7 +175,7 @@ El **editor** sí puede usar A1/A2/A3 o numeración visual, porque ahí ayuda al
 
 ### 4.6 Copia profunda
 
-`structuralType` y `targetRounds` ya se copian hoy (son campos del bloque), así que las series agrupadas vienen casi gratis al reusar la estructura. Igual hay que **verificarlo con tests** en los tres caminos de copia.
+`structuralType` y `targetRounds` ya se copian hoy (son campos del bloque). El campo nuevo `roundRestSeconds` **debe sumarse a todas las copias**: crear rutina desde plantilla, duplicar rutina, finalizar y crear próximo ciclo, y duplicar plantilla. Verificar los cuatro caminos con tests.
 
 ---
 
@@ -176,8 +195,10 @@ El **editor** sí puede usar A1/A2/A3 o numeración visual, porque ahí ayuda al
 ### `GROUPED_SET`
 - AC10 — Un bloque puede tener `structuralType = GROUPED_SET`, persistido con el CHECK constraint actualizado en `template_blocks` y `routine_blocks`.
 - AC11 — La UI deriva el label por conteo (2/3/4+ → Biserie/Triserie/Superserie); el título queda editable.
-- AC12 — PDF/WhatsApp renderizan el bloque con numeración simple (1, 2, 3), las vueltas y el descanso de vuelta. Sin A1/A2/A3 en PDF.
-- AC13 — Copia profunda, duplicar y próximo ciclo preservan `structuralType` y `targetRounds`.
+- AC12 — La UI permite editar y persiste `targetRounds` ("Vueltas", mínimo 1) en un bloque `GROUPED_SET` (hoy estaba dormido, normalizado a null).
+- AC13 — Un bloque `GROUPED_SET` persiste `roundRestSeconds` a nivel bloque. `null`/`0` no renderizan línea de descanso; `> 0` renderiza "Descansar Xs al terminar cada vuelta".
+- AC14 — PDF/WhatsApp/preview renderizan el bloque con numeración simple (1, 2, 3), las vueltas y el descanso de vuelta. Sin A1/A2/A3 en PDF.
+- AC15 — Las cuatro copias (plantilla→rutina, duplicar rutina, próximo ciclo, duplicar plantilla) preservan `structuralType`, `targetRounds` y `roundRestSeconds`.
 
 ---
 
