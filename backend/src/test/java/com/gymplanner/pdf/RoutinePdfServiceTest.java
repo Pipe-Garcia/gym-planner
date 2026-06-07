@@ -320,6 +320,51 @@ class RoutinePdfServiceTest {
     }
 
     @Test
+    void pdf_groupedSetBlock_includesRoundsRestNoteAndSimpleNumberedRows() {
+        Fixture fixture = groupedSetFixture(3, 120);
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("<div class=\"block-title\">Biserie Pecho</div>")
+                .contains("3 vueltas. Sin descanso entre ejercicios. Descansar 120s al terminar cada vuelta.")
+                .contains("1. Pecho Inclinado")
+                .contains("2. Pecho Plano con Barra")
+                .contains("8 reps")
+                .contains("45 kg")
+                .contains("40 kg")
+                .doesNotContain("Biserie Pecho ·")
+                .doesNotContain("A1")
+                .doesNotContain("A2")
+                .doesNotContain("A3");
+    }
+
+    @Test
+    void pdf_groupedSetBlock_withoutRoundRestDoesNotIncludeRoundRestPhrase() {
+        Fixture fixture = groupedSetFixture(1, null);
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("<div class=\"block-title\">Biserie Pecho</div>")
+                .contains("1 vuelta. Sin descanso entre ejercicios.")
+                .doesNotContain("Biserie Pecho ·")
+                .doesNotContain("al terminar cada vuelta");
+    }
+
+    @Test
+    void pdf_groupedSetBlock_withZeroRoundRestDoesNotIncludeRoundRestPhrase() {
+        Fixture fixture = groupedSetFixture(2, 0);
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("<div class=\"block-title\">Biserie Pecho</div>")
+                .contains("2 vueltas. Sin descanso entre ejercicios.")
+                .doesNotContain("al terminar cada vuelta");
+    }
+
+    @Test
     void pdf_filename_includesStudentSlug() {
         Fixture fixture = fixture("María", "Pérez");
 
@@ -387,6 +432,51 @@ class RoutinePdfServiceTest {
                 "Tomar agua entre series",
                 "Lesion en rodilla derecha",
                 List.of(day(exerciseId)))).id();
+        return new Fixture(studentId, routineId);
+    }
+
+    private Fixture groupedSetFixture(Integer targetRounds, Integer roundRestSeconds) {
+        Long studentId = studentService.create(1L, new CreateStudentRequest(
+                "Bruno",
+                "Grupo",
+                null,
+                "555",
+                null,
+                null,
+                "Fuerza",
+                "Hipertrofia",
+                "Intermedio",
+                null,
+                LocalDate.now())).id();
+        Long firstExerciseId = exerciseService.create(1L, new CreateExerciseRequest(
+                "Pecho Inclinado",
+                "Desc",
+                null,
+                MeasurementType.REPS_WEIGHT,
+                null,
+                null,
+                List.of())).id();
+        Long secondExerciseId = exerciseService.create(1L, new CreateExerciseRequest(
+                "Pecho Plano con Barra",
+                "Desc",
+                null,
+                MeasurementType.REPS_WEIGHT,
+                null,
+                null,
+                List.of())).id();
+        Long routineId = routineService.createFromScratch(1L, 1L, new CreateRoutineFromScratchRequest(
+                studentId,
+                "Rutina grouped set PDF",
+                "Fuerza",
+                RoutineStatus.ACTIVE,
+                LocalDate.of(2026, 5, 12),
+                null,
+                "No publicar este texto interno",
+                List.of(new RoutineDayInput(null, null, "Dia grouped", null, List.of(
+                        block("Entrada grouped", BlockStructuralType.STANDARD, BlockPurpose.WARMUP, null, firstExerciseId, null, sets(new BigDecimal("0"), 8)),
+                        groupedSetBlock(firstExerciseId, secondExerciseId, targetRounds, roundRestSeconds),
+                        block("Salida grouped", BlockStructuralType.STANDARD, BlockPurpose.COOLDOWN, null, firstExerciseId, null, sets(new BigDecimal("0"), 8))
+                ))))).id();
         return new Fixture(studentId, routineId);
     }
 
@@ -530,6 +620,13 @@ class RoutinePdfServiceTest {
     private RoutineBlockInput block(String title, BlockStructuralType type, BlockPurpose purpose, Integer duration, Long exerciseId, String exerciseNotes, List<RoutineExerciseSetInput> sets) {
         return new RoutineBlockInput(null, title, type, purpose, duration, null, "Nota visible de bloque", List.of(
                 new RoutineExerciseInput(exerciseId, null, exerciseNotes, sets)
+        ));
+    }
+
+    private RoutineBlockInput groupedSetBlock(Long firstExerciseId, Long secondExerciseId, Integer targetRounds, Integer roundRestSeconds) {
+        return new RoutineBlockInput(null, "Biserie Pecho", BlockStructuralType.GROUPED_SET, BlockPurpose.MAIN_LIFT, null, targetRounds, roundRestSeconds, null, List.of(
+                new RoutineExerciseInput(firstExerciseId, null, null, List.of(set(8, new BigDecimal("45"), 0))),
+                new RoutineExerciseInput(secondExerciseId, null, null, List.of(set(8, new BigDecimal("40"), 0)))
         ));
     }
 

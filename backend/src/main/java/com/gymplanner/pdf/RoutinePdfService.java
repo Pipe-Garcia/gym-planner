@@ -159,19 +159,21 @@ public class RoutinePdfService {
                 .orElse(MeasurementType.REPS_WEIGHT);
 
         boolean isCircuit = block.getStructuralType() == BlockStructuralType.CIRCUIT;
+        boolean isGroupedSet = block.getStructuralType() == BlockStructuralType.GROUPED_SET;
         // Bloque mixto: tiene ejercicios con measurements distintos (e.g. plancha TIME + saltos REPS_ONLY).
         // En ese caso fusionamos las columnas variables en una sola "Objetivo" para que cada ejercicio
         // pueda mostrar su info sin perder datos por no encajar en la columna del primero.
-        boolean isMixed = !isCircuit && hasMixedMeasurements(exercises);
+        boolean isMixed = !isCircuit && !isGroupedSet && hasMixedMeasurements(exercises);
         boolean isStandard = block.getStructuralType() == BlockStructuralType.STANDARD;
-        boolean isStandardTable = !isCircuit && !isMixed && isStandard;
+        boolean isStandardTable = !isCircuit && !isGroupedSet && !isMixed && isStandard;
         boolean collapsed = !isCircuit
+                && !isGroupedSet
                 && isStandard
                 && exercises.stream().allMatch(exercise -> allSetsAreEquivalent(orderedSets(exercise)));
         boolean standardHasExpandedExercise = isStandardTable && !collapsed;
 
         List<String> columns;
-        if (isCircuit) {
+        if (isCircuit || isGroupedSet) {
             columns = circuitColumns(firstMeasurement);
         } else if (isMixed) {
             columns = mixedColumns(collapsed);
@@ -182,9 +184,12 @@ public class RoutinePdfService {
         }
 
         List<PdfExerciseRowDto> rows = new ArrayList<>();
-        for (RoutineExercise exercise : exercises) {
+        for (int i = 0; i < exercises.size(); i++) {
+            RoutineExercise exercise = exercises.get(i);
             if (isCircuit) {
                 rows.add(circuitRow(exercise, firstMeasurement));
+            } else if (isGroupedSet) {
+                rows.add(groupedSetRow(exercise, firstMeasurement, i + 1));
             } else if (isMixed) {
                 rows.addAll(mixedExerciseRows(exercise, collapsed));
             } else if (isStandardTable) {
@@ -197,8 +202,14 @@ public class RoutinePdfService {
         return new PdfBlockDto(
                 block.getTitle(),
                 typeLabel(block.getStructuralType()),
+                block.getStructuralType(),
                 isCircuit,
+                isGroupedSet,
                 circuitNote(block, exercises.size()),
+                groupedSetNote(block),
+                roundsLabel(block.getTargetRounds()),
+                block.getTargetRounds(),
+                block.getRoundRestSeconds(),
                 sanitizeNotes(block.getBlockNotes()),
                 columns,
                 rows);
@@ -261,6 +272,19 @@ public class RoutinePdfService {
         }
         RoutineExerciseSet ref = sets.getFirst();
         return new PdfExerciseRowDto(true, 1, exercise.getExercise().getName(), tagsLabel, sanitizedNotes, circuitCells(ref, exerciseMeasurement));
+    }
+
+    private PdfExerciseRowDto groupedSetRow(RoutineExercise exercise, MeasurementType blockMeasurement, int exerciseNumber) {
+        PdfExerciseRowDto row = circuitRow(exercise, blockMeasurement);
+        return new PdfExerciseRowDto(
+                row.spanRow(),
+                row.rowspan(),
+                exerciseNumber + ". " + row.exerciseName(),
+                row.tagsLabel(),
+                row.exerciseNotes(),
+                row.cells(),
+                row.pdfCells(),
+                row.executionCue());
     }
 
     private List<RoutineExerciseSet> orderedSets(RoutineExercise exercise) {
@@ -567,6 +591,27 @@ public class RoutinePdfService {
         }
         int minutes = Math.max(1, block.getTotalDurationSeconds() / 60);
         return "Rotar entre los " + exerciseCount + " ejercicios sin descanso durante " + minutes + " minutos.";
+    }
+
+    private String groupedSetNote(RoutineBlock block) {
+        if (block.getStructuralType() != BlockStructuralType.GROUPED_SET) {
+            return null;
+        }
+        String note = roundsLabel(block.getTargetRounds()) + ". Sin descanso entre ejercicios.";
+        Integer roundRestSeconds = block.getRoundRestSeconds();
+        if (roundRestSeconds != null && roundRestSeconds > 0) {
+            note += " Descansar " + roundRestLabel(roundRestSeconds) + " al terminar cada vuelta.";
+        }
+        return note;
+    }
+
+    private String roundsLabel(Integer targetRounds) {
+        int rounds = targetRounds == null ? 1 : targetRounds;
+        return rounds + (rounds == 1 ? " vuelta" : " vueltas");
+    }
+
+    private String roundRestLabel(Integer seconds) {
+        return seconds + "s";
     }
 
     /**

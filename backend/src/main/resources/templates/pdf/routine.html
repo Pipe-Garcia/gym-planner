@@ -276,6 +276,7 @@
         </div>
 
         <div th:if="${block.circuitNote != null and !#strings.isEmpty(#strings.trim(block.circuitNote))}" class="circuit-note" th:text="${block.circuitNote}">Rotar</div>
+        <div th:if="${block.groupedSetNote != null and !#strings.isEmpty(#strings.trim(block.groupedSetNote))}" class="circuit-note" th:text="${block.groupedSetNote}">Sin descanso entre ejercicios.</div>
         <div th:if="${block.blockNotes != null and !#strings.isEmpty(#strings.trim(block.blockNotes))}" class="block-notes" th:text="${block.blockNotes}">Notas del bloque</div>
 
         <table class="exercises">
