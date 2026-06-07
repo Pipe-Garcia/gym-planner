@@ -11,7 +11,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { ExerciseSummary } from "@/types/exercise"
-import type { BlockStructuralType } from "@/types/training"
+import type { EditableBlockStructuralType } from "@/types/training"
+
+const nullableNumberRegister = {
+  setValueAs: (value: unknown) => {
+    if (value === "" || value === undefined || value === null) return null
+    const next = Number(value)
+    return Number.isNaN(next) ? null : next
+  },
+}
 
 interface Props {
   blockIndex: number
@@ -29,17 +37,28 @@ interface Props {
 }
 
 export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onMoveUp, onMoveDown, disabled, disableUp, disableDown, context = "template", studentId, excludeRoutineId }: Props) {
-  const { control, register, setValue } = useFormContext()
+  const { control, register, setValue, getValues } = useFormContext()
   const [pickerOpen, setPickerOpen] = useState(false)
   const exercises = useFieldArray({ control, name: `${blockPath}.exercises` })
-  const structuralType = useWatch({ control, name: `${blockPath}.structuralType` }) as BlockStructuralType | undefined
+  const structuralType = useWatch({ control, name: `${blockPath}.structuralType` }) as EditableBlockStructuralType | undefined
+  const isCircuit = structuralType === "CIRCUIT"
+  const isGroupedSet = structuralType === "GROUPED_SET"
+  const groupedSetLabel = groupedSetTypeLabel(exercises.fields.length)
 
   useEffect(() => {
-    if (structuralType !== "CIRCUIT") {
+    if (!isCircuit) {
       setValue(`${blockPath}.totalDurationSeconds`, null, { shouldDirty: true })
     }
-    setValue(`${blockPath}.targetRounds`, null, { shouldDirty: true })
-  }, [blockPath, setValue, structuralType])
+    if (isGroupedSet) {
+      const currentRounds = getValues(`${blockPath}.targetRounds`)
+      if (currentRounds == null || currentRounds === "") {
+        setValue(`${blockPath}.targetRounds`, 3, { shouldDirty: true })
+      }
+    } else {
+      setValue(`${blockPath}.targetRounds`, null, { shouldDirty: true })
+      setValue(`${blockPath}.roundRestSeconds`, null, { shouldDirty: true })
+    }
+  }, [blockPath, getValues, isCircuit, isGroupedSet, setValue])
 
   function addExercise(exercise: ExerciseSummary) {
     exercises.append({ exerciseId: exercise.id, exerciseName: exercise.name, exerciseMeasurement: exercise.defaultMeasurement, orderIndex: exercises.fields.length + 1, exerciseNotes: null, sets: [emptySet(1)] })
@@ -56,8 +75,10 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
             <div
               className={cn(
                 "grid gap-3",
-                structuralType === "CIRCUIT"
+                isCircuit
                   ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"
+                  : isGroupedSet
+                  ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,220px)_minmax(0,120px)_minmax(0,210px)_auto] sm:items-end"
                   : "sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)_auto] sm:items-end",
               )}
             >
@@ -71,7 +92,7 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
                 <BlockTypeSelector name={`${blockPath}.structuralType`} disabled={disabled} />
               </div>
 
-              {structuralType === "CIRCUIT" ? (
+              {isCircuit ? (
                 <label className="space-y-1 text-sm font-medium">
                   Duracion (minutos)
                   <Controller
@@ -97,10 +118,44 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
                 </label>
               ) : null}
 
+              {isGroupedSet ? (
+                <>
+                  <label className="space-y-1 text-sm font-medium">
+                    Vueltas
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      className="no-spinner"
+                      disabled={disabled}
+                      {...register(`${blockPath}.targetRounds`, nullableNumberRegister)}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Descanso al terminar cada vuelta
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      placeholder="segundos"
+                      className="no-spinner"
+                      disabled={disabled}
+                      {...register(`${blockPath}.roundRestSeconds`, nullableNumberRegister)}
+                    />
+                  </label>
+                </>
+              ) : null}
+
               <Button type="button" size="icon" variant="ghost" className="self-end" disabled={disabled} onClick={onRemove} aria-label="Eliminar bloque">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
+
+            {isGroupedSet ? (
+              <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                Tipo derivado: <span className="font-medium text-foreground">{groupedSetLabel}</span>
+              </div>
+            ) : null}
 
             <div className="space-y-3">
               {exercises.fields.map((field, exerciseIndex) => (
@@ -130,4 +185,11 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
       <ExercisePicker open={pickerOpen} onOpenChange={setPickerOpen} onSelect={addExercise} />
     </Card>
   )
+}
+
+function groupedSetTypeLabel(exerciseCount: number) {
+  if (exerciseCount === 2) return "Biserie"
+  if (exerciseCount === 3) return "Triserie"
+  if (exerciseCount >= 4) return "Superserie"
+  return "Series agrupadas"
 }

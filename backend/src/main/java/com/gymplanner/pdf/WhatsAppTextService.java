@@ -115,6 +115,11 @@ public class WhatsAppTextService {
         // no se muestra en el PDF. WhatsApp toma la misma decisión: el
         // nombre del bloque + la nota de circuito (si aplica) alcanzan.
         boolean isCircuit = block.isCircuit();
+        if (block.isGroupedSet()) {
+            appendGroupedSetBlock(out, block);
+            return;
+        }
+
         out.append("▶ *").append(block.title()).append("*\n");
         if (StringUtils.hasText(block.circuitNote())) {
             out.append("  ⏱ ").append(block.circuitNote()).append("\n");
@@ -125,6 +130,25 @@ public class WhatsAppTextService {
 
         for (ExerciseGroup group : groupRows(block.rows())) {
             out.append("  • ").append(group.name()).append(" — ").append(formatSets(group.rows(), isCircuit)).append("\n");
+            if (StringUtils.hasText(group.notes())) {
+                out.append("    _").append(group.notes()).append("_\n");
+            }
+        }
+        out.append("\n");
+    }
+
+    private void appendGroupedSetBlock(StringBuilder out, PdfBlockDto block) {
+        out.append("▶ *").append(block.title()).append("*");
+        out.append("\n");
+        if (StringUtils.hasText(block.groupedSetNote())) {
+            out.append("  ").append(block.groupedSetNote()).append("\n");
+        }
+        if (StringUtils.hasText(block.blockNotes())) {
+            out.append("  _").append(block.blockNotes()).append("_\n");
+        }
+
+        for (ExerciseGroup group : groupRows(block.rows())) {
+            out.append("  ").append(group.name()).append(" · ").append(formatSets(group.rows(), true)).append("\n");
             if (StringUtils.hasText(group.notes())) {
                 out.append("    _").append(group.notes()).append("_\n");
             }

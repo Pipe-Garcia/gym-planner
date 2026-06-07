@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { usePreviousLoads } from "@/hooks/usePreviousLoads"
 import { formatDateEs } from "@/lib/date"
+import { structuralTypeLabel } from "@/lib/labels"
 import { cn } from "@/lib/utils"
 import type { MeasurementType } from "@/types/exercise"
 import type { PreviousLoadOccurrence, PreviousLoadSet } from "@/types/previousLoads"
@@ -63,7 +64,7 @@ export function PreviousLoadPanel({ studentId, exerciseId, excludeRoutineId, str
         occurrence.routineName ? `Rutina: ${occurrence.routineName}` : null,
         setsSummary(occurrence),
       ].filter(Boolean)
-  const contextLine = uniqueContextParts([occurrence.dayName, sectionLabel(occurrence.blockPurpose), occurrence.blockTitle]).join(" · ")
+  const contextLine = uniqueContextParts([occurrence.dayName, sectionLabel(occurrence.blockPurpose), blockContextLabel(occurrence)]).join(" · ")
   const formattedSets = formatSets(occurrence)
 
   return (
@@ -138,28 +139,22 @@ function normalizeForComparison(value: string) {
 }
 
 function setsSummary(occurrence: PreviousLoadOccurrence) {
-  if (occurrence.blockStructuralType === "CIRCUIT") return "Circuito"
+  if (isSingleTargetBlock(occurrence.blockStructuralType)) return structuralTypeLabel(occurrence.blockStructuralType)
   const count = occurrence.sets.length
   if (count === 1) return "1 serie"
   return `${count} series`
 }
 
-function structuralTypeLabel(type: BlockStructuralType) {
-  const labels: Record<BlockStructuralType, string> = {
-    STANDARD: "Estandar",
-    CIRCUIT: "Circuito",
-    PYRAMID: "Piramide",
-    REVERSE_PYRAMID: "Piramide inversa",
-    DROP_SET: "Drop set",
-    REST_PAUSE: "Rest pause",
-    CLUSTER: "Cluster",
-  }
-  return labels[type]
+function blockContextLabel(occurrence: PreviousLoadOccurrence) {
+  if (!occurrence.blockTitle) return isGroupedSet(occurrence.blockStructuralType) ? structuralTypeLabel(occurrence.blockStructuralType) : null
+  return isGroupedSet(occurrence.blockStructuralType)
+    ? `${occurrence.blockTitle} · ${structuralTypeLabel(occurrence.blockStructuralType)}`
+    : occurrence.blockTitle
 }
 
 function formatSets(occurrence: PreviousLoadOccurrence) {
-  if (occurrence.blockStructuralType === "CIRCUIT") {
-    return [`Circuito · Objetivo ${formatSetTarget(occurrence.sets[0], occurrence.measurementType, { includeRest: false })}`]
+  if (isSingleTargetBlock(occurrence.blockStructuralType)) {
+    return [`${structuralTypeLabel(occurrence.blockStructuralType)} · Objetivo ${formatSetTarget(occurrence.sets[0], occurrence.measurementType, { includeRest: false })}`]
   }
   if (occurrence.sets.length === 0) {
     return ["Sin datos de carga"]
@@ -190,6 +185,14 @@ function formatSetTarget(
   if (executionCue) parts.push(executionCue)
 
   return parts.length > 0 ? parts.join(" · ") : "Sin datos de carga"
+}
+
+function isSingleTargetBlock(structuralType: BlockStructuralType) {
+  return structuralType === "CIRCUIT" || isGroupedSet(structuralType)
+}
+
+function isGroupedSet(structuralType: BlockStructuralType) {
+  return structuralType === "GROUPED_SET"
 }
 
 function formatReps(set: PreviousLoadSet) {

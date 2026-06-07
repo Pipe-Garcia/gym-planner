@@ -268,6 +268,7 @@ public class RoutineService {
                     block.setPurpose(originalBlock.getPurpose());
                     block.setTotalDurationSeconds(originalBlock.getTotalDurationSeconds());
                     block.setTargetRounds(originalBlock.getTargetRounds());
+                    block.setRoundRestSeconds(originalBlock.getRoundRestSeconds());
                     block.setBlockNotes(clean(originalBlock.getBlockNotes()));
                     block.getExercises().addAll(copyExercises(originalBlock, block));
                     return block;
@@ -326,6 +327,7 @@ public class RoutineService {
             block.setPurpose(input.purpose());
             block.setTotalDurationSeconds(input.totalDurationSeconds());
             block.setTargetRounds(input.targetRounds());
+            block.setRoundRestSeconds(input.roundRestSeconds());
             block.setBlockNotes(clean(input.blockNotes()));
             int exerciseIndex = 1;
             if (input.exercises() != null) {

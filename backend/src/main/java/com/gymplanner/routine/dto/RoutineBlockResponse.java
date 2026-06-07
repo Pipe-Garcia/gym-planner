@@ -4,4 +4,8 @@ import com.gymplanner.shared.blocks.BlockPurpose;
 import com.gymplanner.shared.blocks.BlockStructuralType;
 import java.util.List;
 
-public record RoutineBlockResponse(Long id, int orderIndex, String title, BlockStructuralType structuralType, BlockPurpose purpose, Integer totalDurationSeconds, Integer targetRounds, String blockNotes, List<RoutineExerciseResponse> exercises) {}
+public record RoutineBlockResponse(Long id, int orderIndex, String title, BlockStructuralType structuralType, BlockPurpose purpose, Integer totalDurationSeconds, Integer targetRounds, Integer roundRestSeconds, String blockNotes, List<RoutineExerciseResponse> exercises) {
+    public RoutineBlockResponse(Long id, int orderIndex, String title, BlockStructuralType structuralType, BlockPurpose purpose, Integer totalDurationSeconds, Integer targetRounds, String blockNotes, List<RoutineExerciseResponse> exercises) {
+        this(id, orderIndex, title, structuralType, purpose, totalDurationSeconds, targetRounds, null, blockNotes, exercises);
+    }
+}

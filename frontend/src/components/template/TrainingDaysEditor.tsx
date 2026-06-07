@@ -122,6 +122,7 @@ function cloneDay(day: DayInput, orderIndex: number): DayInput {
       purpose: block.purpose,
       totalDurationSeconds: block.totalDurationSeconds,
       targetRounds: block.targetRounds,
+      roundRestSeconds: block.roundRestSeconds,
       blockNotes: block.blockNotes,
       exercises: normalizeBlockOrder(block.exercises ?? []).map((exercise) => ({
         exerciseId: exercise.exerciseId,

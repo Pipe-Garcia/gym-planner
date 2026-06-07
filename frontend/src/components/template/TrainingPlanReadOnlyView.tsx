@@ -98,6 +98,7 @@ export function TrainingSectionReadOnly({ group, title, blocks, context }: { gro
 
 export function TrainingBlockReadOnly({ block, context }: { block: TrainingBlock; context: TrainingContext }) {
   const isCircuit = block.structuralType === "CIRCUIT"
+  const isGroupedSet = block.structuralType === "GROUPED_SET"
   return (
     <article className="overflow-hidden rounded-md border">
       <div className="flex flex-col gap-2 border-b bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -114,6 +115,7 @@ export function TrainingBlockReadOnly({ block, context }: { block: TrainingBlock
           </span>
         ) : null}
       </div>
+      {isGroupedSet ? <p className="border-b px-3 py-2 text-sm text-muted-foreground">{formatGroupedSetNote(block)}</p> : null}
       {block.blockNotes ? <p className="border-b px-3 py-2 text-sm text-muted-foreground">{block.blockNotes}</p> : null}
       <TrainingExerciseTable block={block} context={context} />
     </article>
@@ -121,7 +123,8 @@ export function TrainingBlockReadOnly({ block, context }: { block: TrainingBlock
 }
 
 export function TrainingExerciseTable({ block, context }: { block: TrainingBlock; context: TrainingContext }) {
-  const isCircuit = block.structuralType === "CIRCUIT"
+  const isGroupedSet = block.structuralType === "GROUPED_SET"
+  const usesSingleTargetRows = block.structuralType === "CIRCUIT" || isGroupedSet
   const exercises = [...block.exercises].sort((a, b) => a.orderIndex - b.orderIndex)
   const showWeight = context === "routine"
 
@@ -135,16 +138,22 @@ export function TrainingExerciseTable({ block, context }: { block: TrainingBlock
         <thead>
           <tr className="border-b bg-muted/20 text-left text-xs uppercase text-muted-foreground">
             <th className="px-3 py-2 font-medium">Ejercicio</th>
-            {isCircuit ? null : <th className="px-3 py-2 font-medium">Series</th>}
-            <th className="px-3 py-2 font-medium">{isCircuit ? "Objetivo" : "Reps/Tiempo/Distancia"}</th>
+            {usesSingleTargetRows ? null : <th className="px-3 py-2 font-medium">Series</th>}
+            <th className="px-3 py-2 font-medium">{usesSingleTargetRows ? "Objetivo" : "Reps/Tiempo/Distancia"}</th>
             {showWeight ? <th className="px-3 py-2 font-medium">Peso</th> : null}
-            {isCircuit ? null : <th className="px-3 py-2 font-medium">Descanso</th>}
+            {usesSingleTargetRows ? null : <th className="px-3 py-2 font-medium">Descanso</th>}
             <th className="px-3 py-2 font-medium">Notas</th>
           </tr>
         </thead>
         <tbody>
-          {exercises.map((exercise) => (
-            <ExerciseTableRow key={exercise.id ?? exercise.orderIndex} exercise={exercise} isCircuit={isCircuit} showWeight={showWeight} />
+          {exercises.map((exercise, index) => (
+            <ExerciseTableRow
+              key={exercise.id ?? exercise.orderIndex}
+              exercise={exercise}
+              exerciseNumber={isGroupedSet ? index + 1 : undefined}
+              usesSingleTargetRows={usesSingleTargetRows}
+              showWeight={showWeight}
+            />
           ))}
         </tbody>
       </table>
@@ -152,18 +161,28 @@ export function TrainingExerciseTable({ block, context }: { block: TrainingBlock
   )
 }
 
-function ExerciseTableRow({ exercise, isCircuit, showWeight }: { exercise: ExerciseInBlock; isCircuit: boolean; showWeight: boolean }) {
+function ExerciseTableRow({
+  exercise,
+  exerciseNumber,
+  usesSingleTargetRows,
+  showWeight,
+}: {
+  exercise: ExerciseInBlock
+  exerciseNumber?: number
+  usesSingleTargetRows: boolean
+  showWeight: boolean
+}) {
   const sets = [...exercise.sets].sort((a, b) => a.setNumber - b.setNumber)
   const measurement = exercise.defaultMeasurement ?? exercise.exercise?.defaultMeasurement ?? exercise.exerciseMeasurement
 
-  if (isCircuit || allSetsAreEquivalent(sets)) {
+  if (usesSingleTargetRows || allSetsAreEquivalent(sets)) {
     return (
       <tr className="border-b last:border-0">
-        <ExerciseNameCell exercise={exercise} />
-        {isCircuit ? null : <td className="px-3 py-3 align-top">{sets.length || "-"}</td>}
+        <ExerciseNameCell exercise={exercise} exerciseNumber={exerciseNumber} />
+        {usesSingleTargetRows ? null : <td className="px-3 py-3 align-top">{sets.length || "-"}</td>}
         <td className="px-3 py-3 align-top">{formatTargets(sets, measurement)}</td>
         {showWeight ? <td className="px-3 py-3 align-top">{formatWeights(sets)}</td> : null}
-        {isCircuit ? null : <td className="px-3 py-3 align-top">{formatRest(sets)}</td>}
+        {usesSingleTargetRows ? null : <td className="px-3 py-3 align-top">{formatRest(sets)}</td>}
         <td className="px-3 py-3 align-top text-muted-foreground">{formatNotes(exercise, sets)}</td>
       </tr>
     )
@@ -185,10 +204,10 @@ function ExerciseTableRow({ exercise, isCircuit, showWeight }: { exercise: Exerc
   )
 }
 
-function ExerciseNameCell({ exercise, rowSpan }: { exercise: ExerciseInBlock; rowSpan?: number }) {
+function ExerciseNameCell({ exercise, rowSpan, exerciseNumber }: { exercise: ExerciseInBlock; rowSpan?: number; exerciseNumber?: number }) {
   return (
     <td rowSpan={rowSpan} className="px-3 py-3 align-top">
-      <p className="font-medium">{exercise.exerciseName}</p>
+      <p className="font-medium">{exerciseNumber ? `${exerciseNumber}. ${exercise.exerciseName}` : exercise.exerciseName}</p>
       {!exercise.exerciseActive ? <p className="text-xs text-amber-700">Ejercicio inactivo</p> : null}
     </td>
   )
@@ -203,6 +222,19 @@ function sectionOf(block: TrainingBlock): SectionKey {
 function formatMinutes(seconds: number) {
   const minutes = seconds / 60
   return `${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} min`
+}
+
+function formatGroupedSetNote(block: TrainingBlock) {
+  const rounds = block.targetRounds ?? 1
+  const rest = block.roundRestSeconds
+  return `${rounds} ${rounds === 1 ? "vuelta" : "vueltas"}. Sin descanso entre ejercicios.${
+    rest && rest > 0 ? ` Descansar ${formatTime(rest)} al terminar cada vuelta.` : ""
+  }`
+}
+
+function formatTime(seconds: number) {
+  if (seconds % 60 === 0) return `${seconds / 60} min`
+  return `${seconds}s`
 }
 
 function formatTargets(sets: ExerciseSet[], measurement: MeasurementType) {

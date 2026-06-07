@@ -37,7 +37,7 @@ public class TemplateMapper {
     }
 
     private TemplateBlockResponse toBlock(TemplateBlock block) {
-        return new TemplateBlockResponse(block.getId(), block.getOrderIndex(), block.getTitle(), block.getStructuralType(), block.getPurpose(), block.getTotalDurationSeconds(), block.getTargetRounds(), block.getBlockNotes(), block.getExercises().stream().sorted(Comparator.comparingInt(TemplateExercise::getOrderIndex)).map(this::toExercise).toList());
+        return new TemplateBlockResponse(block.getId(), block.getOrderIndex(), block.getTitle(), block.getStructuralType(), block.getPurpose(), block.getTotalDurationSeconds(), block.getTargetRounds(), block.getRoundRestSeconds(), block.getBlockNotes(), block.getExercises().stream().sorted(Comparator.comparingInt(TemplateExercise::getOrderIndex)).map(this::toExercise).toList());
     }
 
     private TemplateExerciseResponse toExercise(TemplateExercise exercise) {

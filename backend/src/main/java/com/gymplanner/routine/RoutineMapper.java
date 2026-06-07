@@ -36,7 +36,7 @@ public class RoutineMapper {
     }
 
     private RoutineBlockResponse toBlock(RoutineBlock block) {
-        return new RoutineBlockResponse(block.getId(), block.getOrderIndex(), block.getTitle(), block.getStructuralType(), block.getPurpose(), block.getTotalDurationSeconds(), block.getTargetRounds(), block.getBlockNotes(), block.getExercises().stream().sorted(Comparator.comparingInt(RoutineExercise::getOrderIndex)).map(this::toExercise).toList());
+        return new RoutineBlockResponse(block.getId(), block.getOrderIndex(), block.getTitle(), block.getStructuralType(), block.getPurpose(), block.getTotalDurationSeconds(), block.getTargetRounds(), block.getRoundRestSeconds(), block.getBlockNotes(), block.getExercises().stream().sorted(Comparator.comparingInt(RoutineExercise::getOrderIndex)).map(this::toExercise).toList());
     }
 
     private RoutineExerciseResponse toExercise(RoutineExercise exercise) {

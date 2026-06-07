@@ -8,7 +8,7 @@ import { emptySet } from "@/components/template/formDefaults"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { MeasurementType } from "@/types/exercise"
-import type { BlockStructuralType } from "@/types/training"
+import type { BlockStructuralType, EditableBlockStructuralType } from "@/types/training"
 
 const nullableNumberRegister = {
   setValueAs: (value: unknown) => {
@@ -29,7 +29,7 @@ interface Props {
   context?: "template" | "routine"
   studentId?: number
   excludeRoutineId?: number | null
-  structuralType?: BlockStructuralType | null
+  structuralType?: EditableBlockStructuralType | null
 }
 
 export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, onRemove, onMoveUp, onMoveDown, disabled, context = "template", studentId, excludeRoutineId, structuralType }: Props) {
@@ -38,6 +38,8 @@ export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, 
   const name = useWatch({ control, name: `${prefix}.exerciseName` }) as string | undefined
   const selectedExerciseId = useWatch({ control, name: `${prefix}.exerciseId` }) as number | undefined
   const measurement = (useWatch({ control, name: `${prefix}.exerciseMeasurement` }) ?? "REPS_WEIGHT") as MeasurementType
+  const usesCompactTargetRow = structuralType === "CIRCUIT" || structuralType === "GROUPED_SET"
+  const previousLoadStructuralType = structuralType === "GROUPED_SET" ? null : structuralType as BlockStructuralType | null | undefined
 
   return (
     <div className="rounded-md border bg-white p-3">
@@ -61,11 +63,11 @@ export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, 
               studentId={studentId}
               exerciseId={selectedExerciseId}
               excludeRoutineId={excludeRoutineId}
-              structuralType={structuralType}
+              structuralType={previousLoadStructuralType}
             />
           ) : null}
-          {structuralType === "CIRCUIT" ? (
-            <CircuitExerciseRow prefix={prefix} measurement={measurement} context={context} disabled={disabled} />
+          {usesCompactTargetRow ? (
+            <CompactTargetExerciseRow prefix={prefix} measurement={measurement} context={context} disabled={disabled} />
           ) : (
             <SetTable name={`${prefix}.sets`} measurement={measurement} context={context} disabled={disabled} />
           )}
@@ -75,7 +77,7 @@ export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, 
   )
 }
 
-export function CircuitExerciseRow({ prefix, measurement, context, disabled }: { prefix: string; measurement: MeasurementType; context: "template" | "routine"; disabled?: boolean }) {
+export function CompactTargetExerciseRow({ prefix, measurement, context, disabled }: { prefix: string; measurement: MeasurementType; context: "template" | "routine"; disabled?: boolean }) {
   const { register, setValue, getValues } = useFormContext()
   const setPath = `${prefix}.sets.0`
 
@@ -119,3 +121,5 @@ export function CircuitExerciseRow({ prefix, measurement, context, disabled }: {
     </div>
   )
 }
+
+export const CircuitExerciseRow = CompactTargetExerciseRow

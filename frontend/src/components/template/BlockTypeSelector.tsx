@@ -2,11 +2,12 @@ import { Info } from "lucide-react"
 import { useFormContext, useWatch } from "react-hook-form"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { structuralTypeLabel } from "@/lib/labels"
-import type { BlockStructuralType } from "@/types/training"
+import type { EditableBlockStructuralType } from "@/types/training"
 
-const descriptions: Record<BlockStructuralType, string> = {
+const descriptions: Record<EditableBlockStructuralType, string> = {
   STANDARD: "Series tradicionales con repeticiones y peso fijos. Ej: 3x10 con 20 kg.",
   CIRCUIT: "Varios ejercicios rotando durante un tiempo total. Ej: 3 ejercicios rotando 12 minutos.",
+  GROUPED_SET: "Varios ejercicios ejecutados como una unidad por vueltas. Ej: biserie o triserie.",
   PYRAMID: "Las series escalan ascendente. Ej: 6 reps con 60kg -> 8 reps con 50kg -> 10 reps con 40kg.",
   REVERSE_PYRAMID: "Las series escalan descendente. Empieza fuerte y baja peso. Ej: 6 reps con 80kg -> 8 reps con 70kg -> 10 reps con 60kg.",
   DROP_SET: "Una serie principal al fallo, seguida de bajadas inmediatas con menos peso.",
@@ -14,11 +15,11 @@ const descriptions: Record<BlockStructuralType, string> = {
   CLUSTER: "Una serie fragmentada en mini-bloques con descanso corto entre ellos. Ej: 3+3+3 con 10s entre cada 3.",
 }
 
-const options = Object.keys(descriptions) as BlockStructuralType[]
+const options = Object.keys(descriptions) as EditableBlockStructuralType[]
 
 export function BlockTypeSelector({ name, disabled }: { name: string; disabled?: boolean }) {
   const { register, control } = useFormContext()
-  const value = useWatch({ control, name }) as BlockStructuralType | undefined
+  const value = useWatch({ control, name }) as EditableBlockStructuralType | undefined
   const selected = value ?? "STANDARD"
 
   return (

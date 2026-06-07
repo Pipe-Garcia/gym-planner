@@ -125,6 +125,7 @@ function routineToForm(routine: Routine): RoutineFormValues {
         purpose: block.purpose ?? null,
         totalDurationSeconds: block.totalDurationSeconds ?? null,
         targetRounds: block.targetRounds ?? null,
+        roundRestSeconds: block.roundRestSeconds ?? null,
         blockNotes: block.blockNotes ?? null,
         exercises: block.exercises.map((exercise, exerciseIndex) => ({
           exerciseId: exercise.exerciseId,
@@ -194,6 +195,8 @@ function findMessageInBlock(blockError: unknown, blockValues?: RoutineFormValues
   if (!isErrorNode(blockError)) return null
   if (isMessageNode(blockError.title)) return blockError.title.message
   if (isMessageNode(blockError.totalDurationSeconds)) return blockError.totalDurationSeconds.message
+  if (isMessageNode(blockError.targetRounds)) return blockError.targetRounds.message
+  if (isMessageNode(blockError.roundRestSeconds)) return blockError.roundRestSeconds.message
   if (isMessageNode(blockError.structuralType)) return blockError.structuralType.message
   if (isMessageNode(blockError.purpose)) return blockError.purpose.message
 

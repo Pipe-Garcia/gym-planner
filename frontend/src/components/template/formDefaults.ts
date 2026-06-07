@@ -34,6 +34,7 @@ export function emptyBlock(orderIndex = 1): BlockInput {
     purpose: "MAIN_LIFT",
     totalDurationSeconds: null,
     targetRounds: null,
+    roundRestSeconds: null,
     blockNotes: null,
     exercises: [],
   }
@@ -124,14 +125,17 @@ export function normalizeBlockForSubmit(
   context: "template" | "routine"
 ): BlockInput {
   const isCircuit = block.structuralType === "CIRCUIT"
+  const isGroupedSet = block.structuralType === "GROUPED_SET"
+  const usesCompactTargetRows = isCircuit || isGroupedSet
   return {
     ...block,
     orderIndex,
-    targetRounds: null,
+    targetRounds: isGroupedSet ? numberOrNull(block.targetRounds) : null,
+    roundRestSeconds: isGroupedSet ? numberOrNull(block.roundRestSeconds) : null,
     totalDurationSeconds: isCircuit ? block.totalDurationSeconds ?? null : null,
     exercises: block.exercises.map((exercise, index) => {
       const normalized = normalizeExerciseForSubmit(exercise, index + 1, context)
-      return isCircuit
+      return usesCompactTargetRows
         ? {
             ...normalized,
             sets: normalized.sets.slice(0, 1).map((set) => ({

@@ -82,6 +82,26 @@ class RoutineDuplicateServiceTest {
     }
 
     @Test
+    void routineBlockStoresAndDuplicateCopiesGroupedSetFields() {
+        Fixture fixture = fixture();
+
+        var original = routineService.get(1L, fixture.originalRoutineId);
+        var originalGrouped = original.days().get(0).blocks().get(1);
+        assertThat(originalGrouped.structuralType()).isEqualTo(BlockStructuralType.GROUPED_SET);
+        assertThat(originalGrouped.targetRounds()).isEqualTo(3);
+        assertThat(originalGrouped.roundRestSeconds()).isEqualTo(90);
+
+        var copy = routineService.duplicate(1L, 1L, fixture.originalRoutineId, new DuplicateRoutineRequest(fixture.targetStudentId, null, LocalDate.now(), RoutineStatus.DRAFT));
+        var copiedGrouped = copy.days().get(0).blocks().get(1);
+        assertThat(copiedGrouped.structuralType()).isEqualTo(BlockStructuralType.GROUPED_SET);
+        assertThat(copiedGrouped.targetRounds()).isEqualTo(3);
+        assertThat(copiedGrouped.roundRestSeconds()).isEqualTo(90);
+        assertThat(copy.days().stream().flatMap(day -> day.blocks().stream()).filter(block -> block.structuralType() != BlockStructuralType.GROUPED_SET).toList())
+                .extracting("roundRestSeconds")
+                .containsOnlyNulls();
+    }
+
+    @Test
     void duplicateRoutineDefaultDraftDoesNotFinishTargetActive() {
         Fixture fixture = fixture();
         Long targetActiveId = routineService.createFromScratch(1L, 1L, routineRequest(fixture.targetStudentId, "Activa destino", RoutineStatus.ACTIVE, fixture.exerciseId, new BigDecimal("35.00"))).id();
@@ -138,7 +158,7 @@ class RoutineDuplicateServiceTest {
     private RoutineDayInput day(String name, Long exerciseId, BigDecimal firstWeight) {
         return new RoutineDayInput(null, null, name, null, List.of(
                 block("Calentamiento", BlockPurpose.ACTIVATION, exerciseId, firstWeight),
-                block("Fuerza", BlockPurpose.MAIN_LIFT, exerciseId, firstWeight),
+                groupedBlock("Fuerza", exerciseId, firstWeight),
                 block("Vuelta", BlockPurpose.COOLDOWN, exerciseId, firstWeight)
         ));
     }
@@ -148,6 +168,15 @@ class RoutineDuplicateServiceTest {
                 new RoutineExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
                         new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, firstWeight, null, null, 90, "3010", "Pausa abajo", 8, "Set pesado", false),
                         new RoutineExerciseSetInput(null, SetKind.NORMAL, 10, null, null, new BigDecimal("67.00"), null, null, 60, null, null, "Set liviano", false)
+                ))
+        ));
+    }
+
+    private RoutineBlockInput groupedBlock(String title, Long exerciseId, BigDecimal firstWeight) {
+        return new RoutineBlockInput(null, title, BlockStructuralType.GROUPED_SET, BlockPurpose.MAIN_LIFT, null, 3, 90, null, List.of(
+                new RoutineExerciseInput(exerciseId, null, "Notas ejercicio", List.of(
+                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 8, null, null, firstWeight, null, null, null, "3010", "Pausa abajo", 8, "Set pesado", false),
+                        new RoutineExerciseSetInput(null, SetKind.NORMAL, 10, null, null, new BigDecimal("67.00"), null, null, null, null, null, "Set liviano", false)
                 ))
         ));
     }
