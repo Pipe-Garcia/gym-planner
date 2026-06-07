@@ -1,8 +1,8 @@
 import type { PageResponse } from "@/types/api"
 import type { Exercise, MeasurementType } from "@/types/exercise"
 
-export type BlockStructuralType = "STANDARD" | "CIRCUIT" | "PYRAMID" | "REVERSE_PYRAMID" | "DROP_SET" | "REST_PAUSE" | "CLUSTER"
-export type EditableBlockStructuralType = BlockStructuralType | "GROUPED_SET"
+export type BlockStructuralType = "STANDARD" | "CIRCUIT" | "GROUPED_SET" | "PYRAMID" | "REVERSE_PYRAMID" | "DROP_SET" | "REST_PAUSE" | "CLUSTER"
+export type EditableBlockStructuralType = BlockStructuralType
 export type BlockPurpose = "WARMUP" | "ACTIVATION" | "MAIN_LIFT" | "ACCESSORY" | "CONDITIONING" | "CORE" | "COOLDOWN" | "OTHER"
 export type SetKind = "NORMAL" | "WARMUP" | "FAILURE" | "DROP" | "REST_PAUSE_PORTION"
 export type RoutineStatus = "ACTIVE" | "FINISHED" | "ARCHIVED" | "DRAFT"

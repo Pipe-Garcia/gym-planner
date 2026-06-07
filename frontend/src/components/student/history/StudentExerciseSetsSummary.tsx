@@ -1,6 +1,7 @@
 import type {
   StudentExerciseOccurrenceSet,
 } from "@/types/studentHistory"
+import { structuralTypeLabel } from "@/lib/labels"
 import type { BlockStructuralType } from "@/types/training"
 
 type StudentExerciseSetsSummaryProps = {
@@ -20,8 +21,8 @@ export function StudentExerciseSetsSummary({
     )
   }
 
-  if (structuralType === "CIRCUIT") {
-    return <CircuitSetsSummary sets={sets} />
+  if (isSingleTargetBlock(structuralType)) {
+    return <SingleTargetSetsSummary sets={sets} structuralType={structuralType} />
   }
 
   const first = sets[0]
@@ -50,12 +51,14 @@ export function StudentExerciseSetsSummary({
   )
 }
 
-function CircuitSetsSummary({ sets }: { sets: StudentExerciseOccurrenceSet[] }) {
+function SingleTargetSetsSummary({ sets, structuralType }: { sets: StudentExerciseOccurrenceSet[]; structuralType: BlockStructuralType }) {
+  const label = structuralTypeLabel(structuralType)
+
   if (sets.length === 1) {
     const set = sets[0]
     return (
       <div className="rounded-md bg-slate-50 px-3 py-2.5 text-sm text-slate-800 ring-1 ring-slate-100">
-        <p className="leading-6">Circuito · {formatSetParts(set).join(" · ")}</p>
+        <p className="leading-6">{label} · {formatSetParts(set).join(" · ")}</p>
         {set.notes?.trim() ? (
           <p className="mt-1 text-xs text-muted-foreground">
             Nota: {set.notes}
@@ -67,7 +70,7 @@ function CircuitSetsSummary({ sets }: { sets: StudentExerciseOccurrenceSet[] }) 
 
   return (
     <div className="rounded-md bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
-      <p className="text-sm font-medium text-slate-800">Circuito</p>
+      <p className="text-sm font-medium text-slate-800">{label}</p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         {sets.map((set) => (
           <div key={set.setNumber} className="text-sm leading-6 text-slate-700">
@@ -82,6 +85,10 @@ function CircuitSetsSummary({ sets }: { sets: StudentExerciseOccurrenceSet[] }) 
       </div>
     </div>
   )
+}
+
+function isSingleTargetBlock(structuralType: BlockStructuralType) {
+  return structuralType === "CIRCUIT" || structuralType === "GROUPED_SET"
 }
 
 function SetLine({ set }: { set: StudentExerciseOccurrenceSet }) {
