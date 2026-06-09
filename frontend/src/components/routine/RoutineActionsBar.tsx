@@ -32,12 +32,22 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   useActivateRoutine,
   useArchiveRoutine,
   useDeleteRoutine,
   useFinishRoutine,
 } from "@/hooks/useRoutines"
 import { useToast } from "@/hooks/useToast"
+import {
+  buildWhatsAppUrl,
+  normalizePhoneForWhatsApp,
+} from "@/lib/phone"
 import type { RoutineResponse } from "@/types/training"
 
 interface RoutineActionsBarProps {
@@ -50,6 +60,10 @@ interface RoutineActionsBarProps {
   compact?: boolean
   /** Callback para "Duplicar". Si no se pasa, la opción no aparece. */
   onDuplicate?: () => void
+  studentFirstName?: string | null
+  studentPhone?: string | null
+  studentLoading?: boolean
+  studentError?: boolean
 }
 
 type DialogName = "activate" | "finish" | "archive" | "delete" | "next" | "createNext" | null
@@ -61,6 +75,10 @@ export function RoutineActionsBar({
   mode = "view",
   compact = false,
   onDuplicate,
+  studentFirstName,
+  studentPhone,
+  studentLoading = false,
+  studentError = false,
 }: RoutineActionsBarProps) {
   const navigate = useNavigate()
   const toast = useToast()
@@ -69,6 +87,16 @@ export function RoutineActionsBar({
   const canEdit = routine.status === "ACTIVE" || routine.status === "DRAFT"
   const isFinishedOrArchived =
     routine.status === "FINISHED" || routine.status === "ARCHIVED"
+  const normalizedStudentPhone = normalizePhoneForWhatsApp(studentPhone)
+  const sendWhatsAppDisabled =
+    studentLoading || studentError || !normalizedStudentPhone
+  const sendWhatsAppTooltip = studentLoading
+    ? "Cargando teléfono del alumno..."
+    : studentError
+      ? "No se pudo cargar el teléfono del alumno"
+      : !normalizedStudentPhone
+        ? "El alumno no tiene un teléfono válido cargado"
+        : null
 
   async function handleDownloadPdf() {
     try {
@@ -97,6 +125,23 @@ export function RoutineActionsBar({
       toast.error("No se pudo copiar. Probá de nuevo.")
       console.error(error)
     }
+  }
+
+  function handleSendWhatsApp() {
+    if (!normalizedStudentPhone) return
+
+    const firstName = studentFirstName?.trim()
+    const routineName = routine.name.trim()
+    const message =
+      firstName && routineName
+        ? `Hola ${firstName}, te envío tu rutina ${routineName} en PDF.`
+        : "Hola, te envío tu rutina en PDF."
+    const url = buildWhatsAppUrl(
+      normalizedStudentPhone,
+      message,
+      window.navigator.userAgent,
+    )
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   function handleSuccess(newRoutine: RoutineResponse) {
@@ -229,16 +274,36 @@ export function RoutineActionsBar({
                 <Download className="h-4 w-4" />
                 PDF
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!hasContent}
-                onClick={handleCopyWhatsApp}
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp
-              </Button>
+              {sendWhatsAppDisabled ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex" tabIndex={0}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Enviar WhatsApp
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{sendWhatsAppTooltip}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendWhatsApp}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Enviar WhatsApp
+                </Button>
+              )}
               {canEdit && (
                 <Button asChild size="sm">
                   <Link
@@ -258,7 +323,7 @@ export function RoutineActionsBar({
             </Button>
           )}
 
-          {routine.status === "DRAFT" && (
+          {mode === "editor" && routine.status === "DRAFT" && (
             <Button
               type="button"
               size="sm"
@@ -269,7 +334,7 @@ export function RoutineActionsBar({
             </Button>
           )}
 
-          {isFinishedOrArchived && (
+          {mode === "editor" && isFinishedOrArchived && (
             <Button
               type="button"
               size="sm"
@@ -280,7 +345,8 @@ export function RoutineActionsBar({
             </Button>
           )}
 
-          {(routine.status === "ACTIVE" ||
+          {(mode === "view" ||
+            routine.status === "ACTIVE" ||
             routine.status === "DRAFT" ||
             routine.status === "FINISHED") && (
             <DropdownMenu>
@@ -291,6 +357,24 @@ export function RoutineActionsBar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
+                {mode === "view" && (
+                  <>
+                    <DropdownMenuItem
+                      disabled={!hasContent}
+                      onSelect={handleCopyWhatsApp}
+                    >
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Copiar texto WhatsApp
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {mode === "view" && routine.status === "DRAFT" && (
+                  <DropdownMenuItem onSelect={() => setDialog("activate")}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Activar
+                  </DropdownMenuItem>
+                )}
                 {routine.status === "ACTIVE" && (
                   <DropdownMenuItem onSelect={() => setDialog("next")}>
                     Finalizar y crear próxima
@@ -306,6 +390,12 @@ export function RoutineActionsBar({
                   <DropdownMenuItem onSelect={() => setDialog("archive")}>
                     <Archive className="mr-2 h-4 w-4" />
                     Archivar
+                  </DropdownMenuItem>
+                )}
+                {mode === "view" && isFinishedOrArchived && (
+                  <DropdownMenuItem onSelect={() => setDialog("createNext")}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crear próximo ciclo
                   </DropdownMenuItem>
                 )}
                 {routine.status === "DRAFT" && (
