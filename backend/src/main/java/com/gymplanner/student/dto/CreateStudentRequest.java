@@ -19,4 +19,8 @@ public record CreateStudentRequest(
         @Size(max = 50) String level,
         String generalNotes,
         @PastOrPresent LocalDate startedAt) {
+
+    public CreateStudentRequest {
+        email = email == null ? null : email.trim();
+    }
 }

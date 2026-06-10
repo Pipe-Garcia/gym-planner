@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     ApiError handleConflict(ConflictException exception, HttpServletRequest request) {
-        return build(HttpStatus.CONFLICT, "Conflict", exception.getMessage(), request, Map.of());
+        return build(HttpStatus.CONFLICT, "Conflict", exception.getMessage(), request, exception.fieldErrors());
     }
 
     @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
