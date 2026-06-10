@@ -6,12 +6,14 @@ import com.gymplanner.shared.exception.ConflictException;
 import com.gymplanner.shared.exception.NotFoundException;
 import com.gymplanner.shared.pagination.PageResponse;
 import com.gymplanner.student.dto.CreateStudentRequest;
+import com.gymplanner.student.dto.PhoneCheckResponse;
 import com.gymplanner.student.dto.StudentResponse;
 import com.gymplanner.student.dto.StudentSummaryResponse;
 import com.gymplanner.student.dto.UpdateStudentRequest;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,7 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final GymRepository gymRepository;
     private final StudentMapper studentMapper;
+    private final StudentFieldNormalizer fieldNormalizer;
 
     @Transactional(readOnly = true)
     public PageResponse<StudentSummaryResponse> list(
@@ -47,8 +50,10 @@ public class StudentService {
 
     @Transactional
     public StudentResponse create(Long gymId, CreateStudentRequest request) {
-        String documentId = clean(request.documentId());
+        String documentId = fieldNormalizer.normalizeDni(request.documentId());
+        String email = fieldNormalizer.normalizeEmail(request.email());
         validateDocumentAvailable(gymId, documentId, null);
+        validateEmailAvailable(gymId, email, null);
 
         Student student = new Student();
         student.setGym(getGym(gymId));
@@ -56,7 +61,7 @@ public class StudentService {
         student.setLastName(request.lastName().trim());
         student.setDocumentId(documentId);
         student.setPhone(clean(request.phone()));
-        student.setEmail(clean(request.email()));
+        student.setEmail(email);
         student.setBirthDate(request.birthDate());
         student.setSport(clean(request.sport()));
         student.setObjective(clean(request.objective()));
@@ -71,11 +76,27 @@ public class StudentService {
         return studentMapper.toResponse(getEntity(gymId, id));
     }
 
+    @Transactional(readOnly = true)
+    public PhoneCheckResponse checkPhone(Long gymId, String phone, Long excludeId) {
+        String normalizedPhone = fieldNormalizer.normalizePhone(phone);
+        if (normalizedPhone == null) {
+            return new PhoneCheckResponse(false, null);
+        }
+
+        Student matchingStudent = findPhoneMatch(gymId, normalizedPhone, excludeId);
+        if (matchingStudent == null) {
+            return new PhoneCheckResponse(false, null);
+        }
+        return new PhoneCheckResponse(
+                true,
+                matchingStudent.getFirstName() + " " + matchingStudent.getLastName());
+    }
+
     @Transactional
     public StudentResponse update(Long gymId, Long id, UpdateStudentRequest request) {
         Student student = getEntity(gymId, id);
         if (request.documentId() != null) {
-            String documentId = clean(request.documentId());
+            String documentId = fieldNormalizer.normalizeDni(request.documentId());
             validateDocumentAvailable(gymId, documentId, id);
             student.setDocumentId(documentId);
         }
@@ -89,7 +110,9 @@ public class StudentService {
             student.setPhone(clean(request.phone()));
         }
         if (request.email() != null) {
-            student.setEmail(clean(request.email()));
+            String email = fieldNormalizer.normalizeEmail(request.email());
+            validateEmailAvailable(gymId, email, id);
+            student.setEmail(email);
         }
         if (request.birthDate() != null) {
             student.setBirthDate(request.birthDate());
@@ -145,8 +168,39 @@ public class StudentService {
                 ? studentRepository.existsByGymIdAndDocumentId(gymId, documentId)
                 : studentRepository.existsByGymIdAndDocumentIdAndIdNot(gymId, documentId, currentStudentId);
         if (exists) {
-            throw new ConflictException("A student with this document id already exists in this gym.");
+            throw new ConflictException(
+                    "Ya existe un alumno con ese DNI.",
+                    Map.of("documentId", "Ya existe un alumno con ese DNI."));
         }
+    }
+
+    private void validateEmailAvailable(Long gymId, String email, Long currentStudentId) {
+        if (!StringUtils.hasText(email)) {
+            return;
+        }
+        boolean exists = currentStudentId == null
+                ? studentRepository.existsByGymIdAndEmail(gymId, email)
+                : studentRepository.existsByGymIdAndEmailAndIdNot(gymId, email, currentStudentId);
+        if (exists) {
+            throw new ConflictException(
+                    "Ya existe un alumno con ese email.",
+                    Map.of("email", "Ya existe un alumno con ese email."));
+        }
+    }
+
+    private Student findPhoneMatch(Long gymId, String normalizedPhone, Long excludeId) {
+        var exactMatch = excludeId == null
+                ? studentRepository.findFirstByGymIdAndPhone(gymId, normalizedPhone)
+                : studentRepository.findFirstByGymIdAndPhoneAndIdNot(gymId, normalizedPhone, excludeId);
+        if (exactMatch.isPresent()) {
+            return exactMatch.get();
+        }
+
+        return studentRepository.findByGymIdAndPhoneIsNotNull(gymId).stream()
+                .filter(student -> excludeId == null || !student.getId().equals(excludeId))
+                .filter(student -> normalizedPhone.equals(fieldNormalizer.normalizePhone(student.getPhone())))
+                .findFirst()
+                .orElse(null);
     }
 
     private Specification<Student> specification(Long gymId, String search, Boolean active, String sport, String level) {

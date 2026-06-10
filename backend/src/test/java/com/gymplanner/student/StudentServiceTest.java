@@ -37,19 +37,33 @@ class StudentServiceTest {
 
     @Test
     void createStudentWithValidDataPersists() {
-        var response = studentService.create(1L, request("Ana", "Garcia", "123"));
+        var response = studentService.create(1L, request("Ana", "Garcia", "12.345.678"));
 
         assertThat(response.id()).isNotNull();
         assertThat(response.firstName()).isEqualTo("Ana");
+        assertThat(response.documentId()).isEqualTo("12345678");
+        assertThat(response.email()).isEqualTo("test@example.com");
         assertThat(studentRepository.findById(response.id())).isPresent();
     }
 
     @Test
-    void createStudentWithDuplicatedDocumentInSameGymThrowsConflict() {
-        studentService.create(1L, request("Ana", "Garcia", "123"));
+    void createStudentWithEquivalentNormalizedDocumentInSameGymThrowsFieldConflict() {
+        studentService.create(1L, request("Ana", "Garcia", "12.345.678"));
 
-        assertThatThrownBy(() -> studentService.create(1L, request("Beto", "Lopez", "123")))
-                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> studentService.create(1L, request("Beto", "Lopez", "12345678")))
+                .isInstanceOfSatisfying(ConflictException.class, exception ->
+                        assertThat(exception.fieldErrors())
+                                .containsEntry("documentId", "Ya existe un alumno con ese DNI."));
+    }
+
+    @Test
+    void createStudentWithEquivalentNormalizedEmailInSameGymThrowsFieldConflict() {
+        studentService.create(1L, request("Ana", "Garcia", "123", " A@x.com "));
+
+        assertThatThrownBy(() -> studentService.create(1L, request("Beto", "Lopez", "456", "a@x.com")))
+                .isInstanceOfSatisfying(ConflictException.class, exception ->
+                        assertThat(exception.fieldErrors())
+                                .containsEntry("email", "Ya existe un alumno con ese email."));
     }
 
     @Test
@@ -96,6 +110,73 @@ class StudentServiceTest {
     }
 
     @Test
+    void updateStudentKeepingOwnNormalizedDocumentAndEmailDoesNotConflict() {
+        var response = studentService.create(1L, request("Ana", "Garcia", "12.345.678", " ANA@EXAMPLE.COM "));
+
+        var updated = studentService.update(1L, response.id(), new UpdateStudentRequest(
+                null, null, "12 345 678", null, " ana@example.com ", null, null, null, null, null, null));
+
+        assertThat(updated.documentId()).isEqualTo("12345678");
+        assertThat(updated.email()).isEqualTo("ana@example.com");
+    }
+
+    @Test
+    void createMultipleStudentsWithoutDocumentOrEmailIsAllowed() {
+        var first = studentService.create(1L, request("Ana", "Garcia", "", " "));
+        var second = studentService.create(1L, request("Beto", "Lopez", "---", ""));
+
+        assertThat(first.documentId()).isNull();
+        assertThat(first.email()).isNull();
+        assertThat(second.documentId()).isNull();
+        assertThat(second.email()).isNull();
+    }
+
+    @Test
+    void checkPhoneReturnsStudentNameForNormalizedMatchInSameGym() {
+        studentService.create(1L, phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "+54 9 11 2345-6789", null);
+
+        assertThat(response.exists()).isTrue();
+        assertThat(response.studentName()).isEqualTo("Ana Garcia");
+    }
+
+    @Test
+    void checkPhoneReturnsEmptyWhenThereIsNoMatch() {
+        studentService.create(1L, phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "351 555-6789", null);
+
+        assertThat(response.exists()).isFalse();
+        assertThat(response.studentName()).isNull();
+    }
+
+    @Test
+    void checkPhoneExcludesCurrentStudentWhenEditing() {
+        var student = studentService.create(
+                1L,
+                phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "5491123456789", student.id());
+
+        assertThat(response.exists()).isFalse();
+        assertThat(response.studentName()).isNull();
+    }
+
+    @Test
+    void checkPhoneDoesNotCrossGyms() {
+        Gym otherGym = createOtherGym(99L, "Other Gym");
+        studentService.create(
+                otherGym.getId(),
+                phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "+54 9 11 2345-6789", null);
+
+        assertThat(response.exists()).isFalse();
+        assertThat(response.studentName()).isNull();
+    }
+
+    @Test
     void getStudentFromAnotherGymThrowsNotFound() {
         Gym otherGym = createOtherGym(99L, "Other Gym");
         var response = studentService.create(1L, request("Ana", "Garcia", "123"));
@@ -105,12 +186,31 @@ class StudentServiceTest {
     }
 
     private CreateStudentRequest request(String firstName, String lastName, String documentId) {
+        return request(firstName, lastName, documentId, "test@example.com");
+    }
+
+    private CreateStudentRequest request(String firstName, String lastName, String documentId, String email) {
         return new CreateStudentRequest(
                 firstName,
                 lastName,
                 documentId,
                 "555",
-                "test@example.com",
+                email,
+                LocalDate.of(2000, 1, 1),
+                "Futbol",
+                "Fuerza",
+                "Intermedio",
+                "Notas",
+                LocalDate.now());
+    }
+
+    private CreateStudentRequest phoneRequest(String firstName, String lastName, String documentId, String phone) {
+        return new CreateStudentRequest(
+                firstName,
+                lastName,
+                documentId,
+                phone,
+                null,
                 LocalDate.of(2000, 1, 1),
                 "Futbol",
                 "Fuerza",

@@ -18,4 +18,8 @@ public record UpdateStudentRequest(
         @Size(max = 50) String level,
         String generalNotes,
         @PastOrPresent LocalDate startedAt) {
+
+    public UpdateStudentRequest {
+        email = email == null ? null : email.trim();
+    }
 }

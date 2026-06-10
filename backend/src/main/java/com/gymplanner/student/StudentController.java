@@ -3,6 +3,7 @@ package com.gymplanner.student;
 import com.gymplanner.auth.CustomUserDetailsService.GymPrincipal;
 import com.gymplanner.shared.pagination.PageResponse;
 import com.gymplanner.student.dto.CreateStudentRequest;
+import com.gymplanner.student.dto.PhoneCheckResponse;
 import com.gymplanner.student.dto.StudentResponse;
 import com.gymplanner.student.dto.StudentSummaryResponse;
 import com.gymplanner.student.dto.UpdateStudentRequest;
@@ -51,6 +52,14 @@ public class StudentController {
             @AuthenticationPrincipal GymPrincipal principal,
             @Valid @RequestBody CreateStudentRequest request) {
         return studentService.create(principal.gymId(), request);
+    }
+
+    @GetMapping("/check-phone")
+    PhoneCheckResponse checkPhone(
+            @AuthenticationPrincipal GymPrincipal principal,
+            @RequestParam String phone,
+            @RequestParam(required = false) Long excludeId) {
+        return studentService.checkPhone(principal.gymId(), phone, excludeId);
     }
 
     @GetMapping("/{id}")

@@ -70,6 +70,11 @@ export interface CreateStudentInput {
   startedAt?: string
 }
 
+export interface PhoneCheckResponse {
+  exists: boolean
+  studentName: string | null
+}
+
 export type UpdateStudentInput = Partial<CreateStudentInput>
 
 export interface CreateInjuryInput {

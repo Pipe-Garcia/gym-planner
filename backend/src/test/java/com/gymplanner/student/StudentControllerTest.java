@@ -56,6 +56,75 @@ class StudentControllerTest {
     }
 
     @Test
+    void postDuplicatedNormalizedDocumentReturnsFieldConflict() throws Exception {
+        mockMvc.perform(post("/api/students")
+                        .with(user(principal()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName":"Ana","lastName":"Garcia","documentId":"12.345.678"}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/students")
+                        .with(user(principal()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName":"Beto","lastName":"Lopez","documentId":"12345678"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.fieldErrors.documentId")
+                        .value("Ya existe un alumno con ese DNI."));
+    }
+
+    @Test
+    void postDuplicatedNormalizedEmailReturnsFieldConflict() throws Exception {
+        mockMvc.perform(post("/api/students")
+                        .with(user(principal()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName":"Ana","lastName":"Garcia","email":" A@x.com "}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/students")
+                        .with(user(principal()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName":"Beto","lastName":"Lopez","email":"a@x.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.fieldErrors.email")
+                        .value("Ya existe un alumno con ese email."));
+    }
+
+    @Test
+    void checkPhoneReturnsOnlyMatchStatusAndStudentName() throws Exception {
+        mockMvc.perform(post("/api/students")
+                        .with(user(principal()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "firstName":"Ana",
+                                  "lastName":"Garcia",
+                                  "documentId":"123",
+                                  "phone":"011 15-2345-6789",
+                                  "email":"ana@example.com"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/students/check-phone")
+                        .with(user(principal()))
+                        .param("phone", "+54 9 11 2345-6789"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exists").value(true))
+                .andExpect(jsonPath("$.studentName").value("Ana Garcia"))
+                .andExpect(jsonPath("$.documentId").doesNotExist())
+                .andExpect(jsonPath("$.phone").doesNotExist())
+                .andExpect(jsonPath("$.email").doesNotExist());
+    }
+
+    @Test
     void getStudentsWithoutAuthReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/students"))
                 .andExpect(status().isUnauthorized());
