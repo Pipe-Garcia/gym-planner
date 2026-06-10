@@ -1,12 +1,22 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { AxiosError } from "axios"
 import { Save } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
+import { checkStudentPhone } from "@/api/students"
 import { studentFormSchema, type StudentFormValues } from "@/schemas/student.schema"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/useToast"
@@ -36,6 +46,9 @@ const defaults: StudentFormValues = {
 export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormProps) {
   const toast = useToast()
   const navigate = useNavigate()
+  const [pendingValues, setPendingValues] = useState<StudentFormValues | null>(null)
+  const [phoneOwnerName, setPhoneOwnerName] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
     defaultValues: defaults,
@@ -60,6 +73,23 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
   }, [form, initialData])
 
   async function handleSubmit(values: StudentFormValues) {
+    if (values.phone?.trim()) {
+      try {
+        const phoneCheck = await checkStudentPhone(values.phone, initialData?.id)
+        if (phoneCheck.exists && phoneCheck.studentName) {
+          setPendingValues(values)
+          setPhoneOwnerName(phoneCheck.studentName)
+          return
+        }
+      } catch {
+        // The warning check must never prevent saving the student.
+      }
+    }
+    await saveStudent(values)
+  }
+
+  async function saveStudent(values: StudentFormValues) {
+    setIsSaving(true)
     try {
       const saved = await onSubmit(values)
       toast.success("Alumno guardado.")
@@ -80,6 +110,8 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
         if (hasMappedFieldError) return
       }
       toast.error(apiError.response?.data.message ?? "No pudimos guardar el alumno.")
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -122,11 +154,48 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
             />
           </CardContent>
         </Card>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button type="submit" disabled={form.formState.isSubmitting || isSaving}>
           <Save className="h-4 w-4" />
-          {form.formState.isSubmitting ? "Guardando..." : submitLabel}
+          {form.formState.isSubmitting || isSaving ? "Guardando..." : submitLabel}
         </Button>
       </form>
+      <AlertDialog
+        open={pendingValues !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingValues(null)
+            setPhoneOwnerName(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Teléfono ya registrado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este teléfono ya está registrado en {phoneOwnerName}. ¿Guardar de todos modos?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button type="button" variant="outline">
+                Cancelar
+              </Button>
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={isSaving}
+              onClick={async () => {
+                const values = pendingValues
+                setPendingValues(null)
+                setPhoneOwnerName(null)
+                if (values) await saveStudent(values)
+              }}
+            >
+              Guardar de todos modos
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Form>
   )
 

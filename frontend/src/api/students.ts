@@ -3,6 +3,7 @@ import type {
   CreateInjuryInput,
   CreateNoteInput,
   CreateStudentInput,
+  PhoneCheckResponse,
   Student,
   StudentInjury,
   StudentListParams,
@@ -29,6 +30,13 @@ export async function createStudent(data: CreateStudentInput) {
 
 export async function updateStudent(id: number, data: UpdateStudentInput) {
   const response = await apiClient.put<Student>(`/api/students/${id}`, data)
+  return response.data
+}
+
+export async function checkStudentPhone(phone: string, excludeId?: number) {
+  const response = await apiClient.get<PhoneCheckResponse>("/api/students/check-phone", {
+    params: { phone, excludeId },
+  })
   return response.data
 }
 

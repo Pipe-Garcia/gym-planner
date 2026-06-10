@@ -6,6 +6,7 @@ import com.gymplanner.shared.exception.ConflictException;
 import com.gymplanner.shared.exception.NotFoundException;
 import com.gymplanner.shared.pagination.PageResponse;
 import com.gymplanner.student.dto.CreateStudentRequest;
+import com.gymplanner.student.dto.PhoneCheckResponse;
 import com.gymplanner.student.dto.StudentResponse;
 import com.gymplanner.student.dto.StudentSummaryResponse;
 import com.gymplanner.student.dto.UpdateStudentRequest;
@@ -73,6 +74,22 @@ public class StudentService {
     @Transactional(readOnly = true)
     public StudentResponse get(Long gymId, Long id) {
         return studentMapper.toResponse(getEntity(gymId, id));
+    }
+
+    @Transactional(readOnly = true)
+    public PhoneCheckResponse checkPhone(Long gymId, String phone, Long excludeId) {
+        String normalizedPhone = fieldNormalizer.normalizePhone(phone);
+        if (normalizedPhone == null) {
+            return new PhoneCheckResponse(false, null);
+        }
+
+        Student matchingStudent = findPhoneMatch(gymId, normalizedPhone, excludeId);
+        if (matchingStudent == null) {
+            return new PhoneCheckResponse(false, null);
+        }
+        return new PhoneCheckResponse(
+                true,
+                matchingStudent.getFirstName() + " " + matchingStudent.getLastName());
     }
 
     @Transactional
@@ -169,6 +186,21 @@ public class StudentService {
                     "Ya existe un alumno con ese email.",
                     Map.of("email", "Ya existe un alumno con ese email."));
         }
+    }
+
+    private Student findPhoneMatch(Long gymId, String normalizedPhone, Long excludeId) {
+        var exactMatch = excludeId == null
+                ? studentRepository.findFirstByGymIdAndPhone(gymId, normalizedPhone)
+                : studentRepository.findFirstByGymIdAndPhoneAndIdNot(gymId, normalizedPhone, excludeId);
+        if (exactMatch.isPresent()) {
+            return exactMatch.get();
+        }
+
+        return studentRepository.findByGymIdAndPhoneIsNotNull(gymId).stream()
+                .filter(student -> excludeId == null || !student.getId().equals(excludeId))
+                .filter(student -> normalizedPhone.equals(fieldNormalizer.normalizePhone(student.getPhone())))
+                .findFirst()
+                .orElse(null);
     }
 
     private Specification<Student> specification(Long gymId, String search, Boolean active, String sport, String level) {

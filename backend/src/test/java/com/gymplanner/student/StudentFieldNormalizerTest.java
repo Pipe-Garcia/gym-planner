@@ -21,4 +21,13 @@ class StudentFieldNormalizerTest {
         assertThat(normalizer.normalizeEmail(" ")).isNull();
         assertThat(normalizer.normalizeEmail(null)).isNull();
     }
+
+    @Test
+    void normalizesArgentinePhoneForMatching() {
+        assertThat(normalizer.normalizePhone("011 15-2345-6789")).isEqualTo("5491123456789");
+        assertThat(normalizer.normalizePhone("+54 9 11 2345-6789")).isEqualTo("5491123456789");
+        assertThat(normalizer.normalizePhone("1111111111")).isNull();
+        assertThat(normalizer.normalizePhone("123")).isNull();
+        assertThat(normalizer.normalizePhone(null)).isNull();
+    }
 }

@@ -132,6 +132,51 @@ class StudentServiceTest {
     }
 
     @Test
+    void checkPhoneReturnsStudentNameForNormalizedMatchInSameGym() {
+        studentService.create(1L, phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "+54 9 11 2345-6789", null);
+
+        assertThat(response.exists()).isTrue();
+        assertThat(response.studentName()).isEqualTo("Ana Garcia");
+    }
+
+    @Test
+    void checkPhoneReturnsEmptyWhenThereIsNoMatch() {
+        studentService.create(1L, phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "351 555-6789", null);
+
+        assertThat(response.exists()).isFalse();
+        assertThat(response.studentName()).isNull();
+    }
+
+    @Test
+    void checkPhoneExcludesCurrentStudentWhenEditing() {
+        var student = studentService.create(
+                1L,
+                phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "5491123456789", student.id());
+
+        assertThat(response.exists()).isFalse();
+        assertThat(response.studentName()).isNull();
+    }
+
+    @Test
+    void checkPhoneDoesNotCrossGyms() {
+        Gym otherGym = createOtherGym(99L, "Other Gym");
+        studentService.create(
+                otherGym.getId(),
+                phoneRequest("Ana", "Garcia", "101", "011 15-2345-6789"));
+
+        var response = studentService.checkPhone(1L, "+54 9 11 2345-6789", null);
+
+        assertThat(response.exists()).isFalse();
+        assertThat(response.studentName()).isNull();
+    }
+
+    @Test
     void getStudentFromAnotherGymThrowsNotFound() {
         Gym otherGym = createOtherGym(99L, "Other Gym");
         var response = studentService.create(1L, request("Ana", "Garcia", "123"));
@@ -151,6 +196,21 @@ class StudentServiceTest {
                 documentId,
                 "555",
                 email,
+                LocalDate.of(2000, 1, 1),
+                "Futbol",
+                "Fuerza",
+                "Intermedio",
+                "Notas",
+                LocalDate.now());
+    }
+
+    private CreateStudentRequest phoneRequest(String firstName, String lastName, String documentId, String phone) {
+        return new CreateStudentRequest(
+                firstName,
+                lastName,
+                documentId,
+                phone,
+                null,
                 LocalDate.of(2000, 1, 1),
                 "Futbol",
                 "Fuerza",

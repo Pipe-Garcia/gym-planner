@@ -98,6 +98,33 @@ class StudentControllerTest {
     }
 
     @Test
+    void checkPhoneReturnsOnlyMatchStatusAndStudentName() throws Exception {
+        mockMvc.perform(post("/api/students")
+                        .with(user(principal()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "firstName":"Ana",
+                                  "lastName":"Garcia",
+                                  "documentId":"123",
+                                  "phone":"011 15-2345-6789",
+                                  "email":"ana@example.com"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/students/check-phone")
+                        .with(user(principal()))
+                        .param("phone", "+54 9 11 2345-6789"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exists").value(true))
+                .andExpect(jsonPath("$.studentName").value("Ana Garcia"))
+                .andExpect(jsonPath("$.documentId").doesNotExist())
+                .andExpect(jsonPath("$.phone").doesNotExist())
+                .andExpect(jsonPath("$.email").doesNotExist());
+    }
+
+    @Test
     void getStudentsWithoutAuthReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/students"))
                 .andExpect(status().isUnauthorized());
