@@ -67,7 +67,17 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
     } catch (error) {
       const apiError = error as AxiosError<ApiError>
       if (apiError.response?.status === 409) {
-        form.setError("documentId", { message: apiError.response.data.message })
+        const fieldErrors = apiError.response.data.fieldErrors ?? {}
+        let hasMappedFieldError = false
+
+        Object.entries(fieldErrors).forEach(([fieldName, message]) => {
+          if (isStudentFormField(fieldName)) {
+            form.setError(fieldName, { type: "server", message })
+            hasMappedFieldError = true
+          }
+        })
+
+        if (hasMappedFieldError) return
       }
       toast.error(apiError.response?.data.message ?? "No pudimos guardar el alumno.")
     }
@@ -138,6 +148,10 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
       />
     )
   }
+}
+
+function isStudentFormField(fieldName: string): fieldName is keyof StudentFormValues {
+  return Object.prototype.hasOwnProperty.call(defaults, fieldName)
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
