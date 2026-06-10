@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -40,6 +41,19 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     ApiError handleConflict(ConflictException exception, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, "Conflict", exception.getMessage(), request, exception.fieldErrors());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    ApiError handleDataIntegrityViolation(
+            DataIntegrityViolationException exception,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                "Ya existe un alumno con esos datos.",
+                request,
+                Map.of());
     }
 
     @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
