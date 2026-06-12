@@ -6,9 +6,19 @@
   <style>
     @page {
       size: A4;
-      margin: 1.5cm;
+      margin: 1.8cm 1.5cm 1.5cm;
+      @top-center {
+        content: element(pageHeader);
+      }
       @bottom-center {
         content: element(footer);
+      }
+    }
+
+    @page :first {
+      margin-top: 1.5cm;
+      @top-center {
+        content: none;
       }
     }
 
@@ -17,6 +27,17 @@
       color: #1a1a1a;
       font-size: 10pt;
       line-height: 1.4;
+    }
+
+    .running-header {
+      position: running(pageHeader);
+      width: 100%;
+      font-size: 7pt;
+      color: #777;
+      text-align: center;
+      border-bottom: 1px solid #E5E7EB;
+      padding-bottom: 3px;
+      white-space: nowrap;
     }
 
     .footer {
@@ -35,54 +56,54 @@
       display: table;
       width: 100%;
       border-bottom: 2px solid #2563EB;
-      padding-bottom: 10px;
-      margin-bottom: 16px;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
     }
     .header-logo {
       display: table-cell;
-      width: 60px;
+      width: 48px;
       vertical-align: middle;
     }
     .header-logo img {
-      max-height: 50px;
-      max-width: 60px;
+      max-height: 38px;
+      max-width: 48px;
     }
     .header-gym {
       display: table-cell;
       vertical-align: middle;
-      padding-left: 14px;
+      padding-left: 10px;
     }
     .gym-name {
-      font-size: 14pt;
+      font-size: 13pt;
       font-weight: bold;
       color: #111;
     }
     .gym-contact {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #666;
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
     .student-band {
       background: #F9FAFB;
       border-left: 3px solid #2563EB;
-      padding: 10px 14px;
-      margin-bottom: 16px;
+      padding: 7px 10px;
+      margin-bottom: 10px;
     }
     .routine-name {
-      font-size: 13pt;
+      font-size: 12pt;
       font-weight: bold;
       color: #111;
     }
     .student-name {
-      font-size: 11pt;
+      font-size: 10pt;
       color: #333;
-      margin-top: 3px;
+      margin-top: 1px;
     }
     .meta-row {
-      font-size: 9pt;
+      font-size: 8pt;
       color: #666;
-      margin-top: 3px;
+      margin-top: 1px;
     }
 
     .notes-box {
@@ -135,7 +156,8 @@
       letter-spacing: 0.08em;
       padding: 3px 10px;
       margin: 4px 0 8px;
-      display: inline-block;
+      display: block;
+      page-break-after: avoid;
       text-transform: uppercase;
       background: white;
       border-left-width: 3px;
@@ -222,11 +244,18 @@
   </style>
 </head>
 <body>
+  <div class="running-header">
+    <span th:text="${data.metadata.gym.name}">Gym</span>
+    <span> &middot; </span>
+    <span th:text="${data.metadata.routineName}">Rutina</span>
+    <span> &middot; </span>
+    <span th:text="${data.metadata.studentFullName}">Alumno</span>
+  </div>
+
   <div class="footer">
     <span class="page-num"></span>
   </div>
 
-  <div th:each="day, dayStat : ${data.days}" class="day-block">
     <div class="header" th:style="'border-bottom: 2px solid ' + ${data.metadata.gym.primaryColor}">
       <div class="header-logo">
         <img th:if="${data.metadata.gym.logoUrl != null}" th:src="${data.metadata.gym.logoUrl}" alt="Logo"/>
@@ -255,6 +284,7 @@
       </div>
     </div>
 
+  <div th:each="day, dayStat : ${data.days}" class="day-block">
     <div th:if="${dayStat.first and data.generalNotes != null and !#strings.isEmpty(#strings.trim(data.generalNotes))}" class="notes-box">
       <div class="notes-label">NOTAS</div>
       <div class="notes-content" th:text="${data.generalNotes}">Notas generales</div>
