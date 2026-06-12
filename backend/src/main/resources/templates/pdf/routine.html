@@ -61,17 +61,24 @@
     }
     .header-logo {
       display: table-cell;
-      width: 48px;
+      width: 54px;
       vertical-align: middle;
     }
-    .header-logo img {
-      max-height: 38px;
-      max-width: 48px;
+    .gym-monogram {
+      width: 44px;
+      height: 44px;
+      line-height: 44px;
+      text-align: center;
+      background-color: #6B7280;
+      color: white;
+      font-size: 11pt;
+      font-weight: bold;
+      letter-spacing: 0.5pt;
     }
     .header-gym {
       display: table-cell;
       vertical-align: middle;
-      padding-left: 10px;
+      padding-left: 12px;
     }
     .gym-name {
       font-size: 13pt;
@@ -258,7 +265,9 @@
 
     <div class="header" th:style="'border-bottom: 2px solid ' + ${data.metadata.gym.primaryColor}">
       <div class="header-logo">
-        <img th:if="${data.metadata.gym.logoUrl != null}" th:src="${data.metadata.gym.logoUrl}" alt="Logo"/>
+        <div class="gym-monogram"
+             th:style="${data.metadata.gym.primaryColor != null ? 'background-color: ' + data.metadata.gym.primaryColor : 'background-color: #6B7280'}"
+             th:text="${data.metadata.gym.initials}">GYM</div>
       </div>
       <div class="header-gym">
         <div class="gym-name" th:text="${data.metadata.gym.name}">Gym</div>

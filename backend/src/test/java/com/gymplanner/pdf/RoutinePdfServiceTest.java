@@ -105,6 +105,22 @@ class RoutinePdfServiceTest {
     }
 
     @Test
+    void pdf_showsGymInitialsWithoutExternalLogo() {
+        Fixture fixture = fixture();
+        Student student = studentRepository.findById(fixture.studentId()).orElseThrow();
+        student.getGym().setName("Sergio Carrión Gym Extra");
+        student.getGym().setLogoUrl("https://placehold.co/logo.png");
+
+        String html = routinePdfService.renderHtml(fixture.routineId(), 1L);
+
+        assertThat(html)
+                .contains("class=\"gym-monogram\"")
+                .contains(">SCG</div>")
+                .doesNotContain("<img")
+                .doesNotContain("https://placehold.co/logo.png");
+    }
+
+    @Test
     void pdf_doesNotShowExerciseTagsOrCategories() {
         Fixture fixture = fixtureWithTaggedExercise();
 
