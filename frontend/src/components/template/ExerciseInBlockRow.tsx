@@ -1,5 +1,5 @@
-import { Trash2 } from "lucide-react"
-import { useEffect } from "react"
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
 import { useFormContext, useWatch } from "react-hook-form"
 import { PreviousLoadPanel } from "@/components/routine/PreviousLoadPanel"
 import { ReorderButtons } from "@/components/template/ReorderButtons"
@@ -33,13 +33,17 @@ interface Props {
 }
 
 export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, onRemove, onMoveUp, onMoveDown, disabled, context = "template", studentId, excludeRoutineId, structuralType }: Props) {
-  const { control, register } = useFormContext()
+  const { control, getValues, register } = useFormContext()
   const prefix = `${blockPath}.exercises.${exerciseIndex}`
   const name = useWatch({ control, name: `${prefix}.exerciseName` }) as string | undefined
   const selectedExerciseId = useWatch({ control, name: `${prefix}.exerciseId` }) as number | undefined
   const measurement = (useWatch({ control, name: `${prefix}.exerciseMeasurement` }) ?? "REPS_WEIGHT") as MeasurementType
+  const exerciseNotes = useWatch({ control, name: `${prefix}.exerciseNotes` }) as string | null | undefined
+  const [notesExpanded, setNotesExpanded] = useState(() => Boolean((getValues(`${prefix}.exerciseNotes`) as string | null | undefined)?.trim()))
   const usesCompactTargetRow = structuralType === "CIRCUIT" || structuralType === "GROUPED_SET"
   const previousLoadStructuralType = structuralType === "GROUPED_SET" ? null : structuralType as BlockStructuralType | null | undefined
+  const hasExerciseNotes = Boolean(exerciseNotes?.trim())
+  const exerciseNotesId = `${prefix}.exerciseNotes-field`
 
   return (
     <div className="rounded-md border bg-white p-3">
@@ -57,7 +61,27 @@ export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, 
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <Input placeholder="Notas del ejercicio" disabled={disabled} {...register(`${prefix}.exerciseNotes`)} />
+          <div className="space-y-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => setNotesExpanded((value) => !value)}
+              aria-expanded={notesExpanded}
+              aria-controls={exerciseNotesId}
+            >
+              {notesExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : hasExerciseNotes ? (
+                <ChevronRight className="h-3.5 w-3.5" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+              {notesExpanded ? "Ocultar nota de ejercicio" : hasExerciseNotes ? "Ver o editar nota de ejercicio" : "Agregar nota de ejercicio"}
+            </button>
+            <div id={exerciseNotesId} className={notesExpanded ? "" : "hidden"}>
+              <Input placeholder="Notas del ejercicio" disabled={disabled} {...register(`${prefix}.exerciseNotes`)} />
+            </div>
+          </div>
           {context === "routine" && studentId && selectedExerciseId ? (
             <PreviousLoadPanel
               studentId={studentId}
