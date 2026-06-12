@@ -91,6 +91,7 @@ public class RoutinePdfService {
                         gym.getEmail(),
                         gym.getAddress(),
                         StringUtils.hasText(gym.getPrimaryColor()) ? gym.getPrimaryColor() : "#2563EB",
+                        initialsOf(gym.getName()),
                         gym.getLogoUrl()),
                 routine.getName(),
                 student.getFirstName() + " " + student.getLastName(),
@@ -636,6 +637,18 @@ public class RoutinePdfService {
             return null;
         }
         return trimmed;
+    }
+
+    private String initialsOf(String name) {
+        if (!StringUtils.hasText(name)) return "G";
+
+        StringBuilder initials = new StringBuilder(3);
+        for (String word : name.trim().split("\\s+")) {
+            if (word.isEmpty()) continue;
+            initials.appendCodePoint(Character.toUpperCase(word.codePointAt(0)));
+            if (initials.codePointCount(0, initials.length()) == 3) break;
+        }
+        return initials.isEmpty() ? "G" : initials.toString();
     }
 
     private String slugify(String value) {

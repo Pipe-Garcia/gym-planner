@@ -16,6 +16,7 @@ public record PdfMetadataDto(
             String email,
             String address,
             String primaryColor,
+            String initials,
             String logoUrl) {
     }
 }
