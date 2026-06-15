@@ -1,4 +1,4 @@
-import { Info } from "lucide-react"
+import { ChevronDown, Info } from "lucide-react"
 import { useMemo } from "react"
 import type React from "react"
 import { Controller, type FieldPath, type UseFormReturn } from "react-hook-form"
@@ -145,46 +145,62 @@ export function WeightAdjustmentFields<T extends CycleFormFields>({ form, disabl
           </label>
           <div className="flex justify-between text-xs text-muted-foreground"><span>-30%</span><span>+50%</span></div>
 
-          <div className="space-y-2">
-            <Label>Redondear a</Label>
-            <Controller
-              control={form.control}
-              name={"roundingStepKg" as FieldPath<T>}
-              render={({ field }) => (
-                <div className="flex flex-wrap gap-2">
-                  {roundingOptions.map((option) => (
-                    <button
-                      key={option.label}
-                      type="button"
-                      aria-pressed={field.value === option.value}
-                      className={`rounded-full border px-3 py-1.5 text-sm transition hover:border-primary/70 disabled:pointer-events-none disabled:opacity-60 ${
-                        field.value === option.value ? "border-primary bg-primary text-primary-foreground" : "bg-background"
-                      }`}
-                      disabled={disabled}
-                      onClick={() => field.onChange(option.value)}
-                    >
-                      {option.value === 2.5 ? "2.5 kg" : option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            />
-            <p className="text-xs text-muted-foreground">
-              {roundingStepKg === 2.5
-                ? "Habitual para discos de gimnasio."
-                : selectedRounding?.value
-                  ? `Redondea al múltiplo más cercano de ${selectedRounding.label}.`
-                  : "Mantiene el resultado exacto del porcentaje."}
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {roundingStepKg
+              ? `Redondeo aplicado: ${roundingStepKg} kg al múltiplo más cercano.`
+              : "Sin redondeo."}
+          </p>
 
-          <div className="rounded-md border bg-background p-3 text-sm">
-            <p className="font-medium">Ejemplo de cálculo</p>
-            <p className="mt-2 text-muted-foreground">
-              Una serie de 80 kg → {formatPercent(weightPercentage)} = {formatWeight(example.raw)} kg →{" "}
-              {roundingStepKg ? `redondeado a ${roundingStepKg} kg = ${formatWeight(example.rounded)} kg` : `sin redondeo = ${formatWeight(example.rounded)} kg`}
-            </p>
-          </div>
+          <details className="group rounded-md border bg-background">
+            <summary className={`flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden ${
+              disabled ? "pointer-events-none opacity-60" : ""
+            }`}>
+              Opciones avanzadas de redondeo
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="space-y-4 border-t p-3">
+              <div className="space-y-2">
+                <Label>Redondear a</Label>
+                <Controller
+                  control={form.control}
+                  name={"roundingStepKg" as FieldPath<T>}
+                  render={({ field }) => (
+                    <div className="flex flex-wrap gap-2">
+                      {roundingOptions.map((option) => (
+                        <button
+                          key={option.label}
+                          type="button"
+                          aria-pressed={field.value === option.value}
+                          className={`rounded-full border px-3 py-1.5 text-sm transition hover:border-primary/70 disabled:pointer-events-none disabled:opacity-60 ${
+                            field.value === option.value ? "border-primary bg-primary text-primary-foreground" : "bg-background"
+                          }`}
+                          disabled={disabled}
+                          onClick={() => field.onChange(option.value)}
+                        >
+                          {option.value === 2.5 ? "2.5 kg" : option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {roundingStepKg === 2.5
+                    ? "Habitual para discos de gimnasio."
+                    : selectedRounding?.value
+                      ? `Redondea al múltiplo más cercano de ${selectedRounding.label}.`
+                      : "Mantiene el resultado exacto del porcentaje."}
+                </p>
+              </div>
+
+              <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                <p className="font-medium">Ejemplo de cálculo</p>
+                <p className="mt-2 text-muted-foreground">
+                  Una serie de 80 kg → {formatPercent(weightPercentage)} = {formatWeight(example.raw)} kg →{" "}
+                  {roundingStepKg ? `redondeado a ${roundingStepKg} kg = ${formatWeight(example.rounded)} kg` : `sin redondeo = ${formatWeight(example.rounded)} kg`}
+                </p>
+              </div>
+            </div>
+          </details>
 
           <div className="space-y-2">
             <p className="flex gap-2 text-xs text-muted-foreground"><Info className="h-4 w-4 shrink-0" />Solo se ajustan las series con peso cargado. Las de tiempo, distancia o reps quedan igual.</p>
