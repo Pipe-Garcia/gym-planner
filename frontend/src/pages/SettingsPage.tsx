@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { getCurrentGym, updateCurrentGym } from "@/api/gym"
+import { TagAdminSection } from "@/components/exercise/tag-admin/TagAdminSection"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -221,6 +222,7 @@ export function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+      <TagAdminSection />
     </div>
   )
 }
