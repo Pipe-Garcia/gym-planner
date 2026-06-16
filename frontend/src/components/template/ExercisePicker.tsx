@@ -25,7 +25,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: Props) {
           {(query.data?.content ?? []).map((exercise) => (
             <button key={exercise.id} type="button" className="rounded-md border p-3 text-left hover:bg-muted" onClick={() => { onSelect(exercise); onOpenChange(false) }}>
               <p className="font-medium">{exercise.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{exercise.tags.map((tag) => tag.name).join(" · ") || "Sin tags"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{exercise.tags.map((tag) => tag.name).join(" · ") || "Sin etiquetas"}</p>
             </button>
           ))}
           {!query.isLoading && query.data?.content.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No hay ejercicios activos para esa busqueda.</p> : null}

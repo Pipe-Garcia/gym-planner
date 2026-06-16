@@ -21,7 +21,7 @@ export function NewExercisePage() {
       <BackButton to="/exercises" />
       <div>
         <h1 className="text-2xl font-semibold tracking-normal">Nuevo ejercicio</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Carga el ejercicio y sus tags.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Carga el ejercicio y sus etiquetas.</p>
       </div>
       <ExerciseForm tags={tagsQuery.data ?? []} onSubmit={(values: ExerciseFormValues) => createExercise.mutateAsync(values)} submitLabel="Crear ejercicio" />
     </div>
