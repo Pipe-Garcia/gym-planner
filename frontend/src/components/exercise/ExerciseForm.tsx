@@ -112,7 +112,7 @@ export function ExerciseForm({ tags, initialData, onSubmit, submitLabel }: Exerc
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Tags</CardTitle>
+            <CardTitle className="text-base">Etiquetas</CardTitle>
           </CardHeader>
           <CardContent>
             <FormField

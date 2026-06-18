@@ -11,6 +11,10 @@ export interface ExerciseTag {
   slug: string
 }
 
+export interface ExerciseTagUsage extends ExerciseTag {
+  usageCount: number
+}
+
 export interface ExerciseSummary {
   id: number
   name: string
@@ -51,3 +55,12 @@ export interface CreateExerciseInput {
 export type UpdateExerciseInput = Partial<CreateExerciseInput>
 
 export type ExercisePage = PageResponse<ExerciseSummary>
+
+export interface CreateExerciseTagRequest {
+  name: string
+  type: TagType
+}
+
+export interface UpdateExerciseTagRequest {
+  name: string
+}
