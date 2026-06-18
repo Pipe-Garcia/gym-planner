@@ -1,5 +1,5 @@
 import type { AxiosError } from "axios"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { ChevronDown, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { TagBadge } from "@/components/exercise/TagBadge"
 import { TagFormDialog } from "@/components/exercise/tag-admin/TagFormDialog"
@@ -12,6 +12,15 @@ import { useDeleteExerciseTag, useExerciseTagUsage } from "@/hooks/useExercises"
 import { useToast } from "@/hooks/useToast"
 import type { ApiError } from "@/types/api"
 import type { ExerciseTagUsage, TagType } from "@/types/exercise"
+
+const tagTypeColorDots: Record<TagType, string> = {
+  BODY_AREA: "bg-blue-500",
+  MUSCLE_GROUP: "bg-indigo-500",
+  MOVEMENT_PATTERN: "bg-violet-500",
+  OBJECTIVE: "bg-emerald-500",
+  LEVEL: "bg-amber-500",
+  EQUIPMENT: "bg-slate-500",
+}
 
 export function TagAdminSection() {
   const toast = useToast()
@@ -111,24 +120,30 @@ interface TagTypeGroupProps {
 
 function TagTypeGroup({ type, tags, onEdit, onDelete }: TagTypeGroupProps) {
   return (
-    <details open className="rounded-md border bg-white p-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold">
-        <span>{tagTypeLabels[type]}</span>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-          {tags.length}
+    <details className="group rounded-md border bg-white">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tagTypeColorDots[type]}`} />
+          <span className="truncate">{tagTypeLabels[type]}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            {tagCountText(tags.length)}
+          </span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </span>
       </summary>
       {tags.length ? (
-        <div className="mt-3 divide-y">
+        <div className="grid gap-3 border-t p-3 md:grid-cols-2">
           {tags.map((tag) => (
-            <div key={tag.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
+            <div key={tag.id} className="flex min-w-0 items-center gap-2 overflow-hidden rounded-md border bg-muted/20 p-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                 <TagBadge tag={tag} />
-                <span className={tag.usageCount > 0 ? "text-sm text-muted-foreground" : "text-sm text-muted-foreground/80"}>
+                <span className={tag.usageCount > 0 ? "min-w-0 truncate text-sm text-muted-foreground" : "min-w-0 truncate text-sm text-muted-foreground/80"}>
                   {usageText(tag.usageCount)}
                 </span>
               </div>
-              <div className="flex gap-2 sm:justify-end">
+              <div className="flex shrink-0 items-center gap-1">
                 <Button type="button" variant="outline" size="icon" onClick={() => onEdit(tag)} aria-label={`Editar etiqueta ${tag.name}`}>
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -140,7 +155,7 @@ function TagTypeGroup({ type, tags, onEdit, onDelete }: TagTypeGroupProps) {
           ))}
         </div>
       ) : (
-        <p className="mt-3 rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">Sin etiquetas en este grupo.</p>
+        <p className="border-t p-3 text-sm text-muted-foreground">Sin etiquetas en este grupo.</p>
       )}
     </details>
   )
@@ -157,6 +172,11 @@ function usageText(usageCount: number) {
   if (usageCount === 0) return "Sin uso"
   if (usageCount === 1) return "Usado en 1 ejercicio"
   return `Usado en ${usageCount} ejercicios`
+}
+
+function tagCountText(count: number) {
+  if (count === 1) return "1 etiqueta"
+  return `${count} etiquetas`
 }
 
 function deleteDescription(tag: ExerciseTagUsage | null) {

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/useToast"
 
 const gymSchema = z.object({
@@ -104,6 +105,12 @@ export function SettingsPage() {
         <p className="mt-1 text-sm text-muted-foreground">Datos visibles del gimnasio.</p>
       </div>
 
+      <Tabs defaultValue="gym">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+          <TabsTrigger value="gym">Gimnasio</TabsTrigger>
+          <TabsTrigger value="tags">Etiquetas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="gym">
       <Card>
         <CardHeader>
           <CardTitle>Gimnasio</CardTitle>
@@ -222,7 +229,11 @@ export function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
-      <TagAdminSection />
+        </TabsContent>
+        <TabsContent value="tags">
+          <TagAdminSection />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
