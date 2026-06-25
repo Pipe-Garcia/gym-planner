@@ -20,8 +20,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String PUBLIC_PING_PATH = "/api/public/ping";
+
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        return PUBLIC_PING_PATH.equals(request.getServletPath());
+    }
 
     @Override
     protected void doFilterInternal(

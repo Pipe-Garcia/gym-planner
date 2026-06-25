@@ -49,7 +49,7 @@ public class SecurityConfig {
                                 writeError(response, request.getRequestURI(), HttpStatus.FORBIDDEN, "Forbidden",
                                         "Access denied.")))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/actuator/health").permitAll()
+                        .requestMatchers("/api/auth/login", "/actuator/health", "/api/public/ping").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
