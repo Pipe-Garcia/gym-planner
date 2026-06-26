@@ -21,6 +21,7 @@ export function StudentsListPage() {
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const studentsQuery = useStudents({ search, active, sport, level, page, size: 20, sort: "lastName,asc" })
+  const totalStudents = studentsQuery.data?.totalElements
   const deactivate = useDeactivateStudent()
   const reactivate = useReactivateStudent()
 
@@ -96,6 +97,12 @@ export function StudentsListPage() {
               <Filter className="h-4 w-4" />
             </Button>
           </div>
+
+          {totalStudents !== undefined && (
+            <p className="text-sm text-muted-foreground">
+              Mostrando {totalStudents} {totalStudents === 1 ? "alumno" : "alumnos"}
+            </p>
+          )}
 
           {studentsQuery.isLoading ? (
             <div className="flex min-h-64 items-center justify-center">
