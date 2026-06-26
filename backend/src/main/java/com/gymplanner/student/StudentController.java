@@ -37,7 +37,7 @@ public class StudentController {
     PageResponse<StudentSummaryResponse> list(
             @AuthenticationPrincipal GymPrincipal principal,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "true") Boolean active,
+            @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) String sport,
             @RequestParam(required = false) String level,
             @RequestParam(defaultValue = "0") int page,

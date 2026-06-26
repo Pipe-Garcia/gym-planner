@@ -59,6 +59,7 @@ export function StudentsListPage() {
         setActive(true)
         setSport("")
         setLevel("")
+        setPage(0)
       }}
     />
   )
