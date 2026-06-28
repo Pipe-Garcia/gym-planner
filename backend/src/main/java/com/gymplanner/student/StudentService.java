@@ -10,9 +10,13 @@ import com.gymplanner.student.dto.PhoneCheckResponse;
 import com.gymplanner.student.dto.StudentResponse;
 import com.gymplanner.student.dto.StudentSummaryResponse;
 import com.gymplanner.student.dto.UpdateStudentRequest;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -211,10 +215,10 @@ public class StudentService {
                 predicates.add(builder.equal(root.get("active"), active));
             }
             if (StringUtils.hasText(sport)) {
-                predicates.add(builder.equal(builder.lower(root.get("sport")), sport.trim().toLowerCase()));
+                predicates.add(builder.like(unaccentedLower(builder.lower(root.get("sport")), builder), likePattern(sport)));
             }
             if (StringUtils.hasText(level)) {
-                predicates.add(builder.equal(builder.lower(root.get("level")), level.trim().toLowerCase()));
+                predicates.add(builder.like(unaccentedLower(builder.lower(root.get("level")), builder), likePattern(level)));
             }
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + search.trim().toLowerCase() + "%";
@@ -226,6 +230,18 @@ public class StudentService {
             }
             return builder.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    private Expression<String> unaccentedLower(Expression<String> value, CriteriaBuilder builder) {
+        return builder.function("unaccent", String.class, value);
+    }
+
+    private String likePattern(String value) {
+        return "%" + removeAccents(value.trim()).toLowerCase(Locale.ROOT) + "%";
+    }
+
+    private String removeAccents(String value) {
+        return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     }
 
     private String clean(String value) {
