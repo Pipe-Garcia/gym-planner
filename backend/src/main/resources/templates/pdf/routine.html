@@ -94,23 +94,13 @@
     .student-band {
       background: #F9FAFB;
       border-left: 3px solid #2563EB;
-      padding: 7px 10px;
-      margin-bottom: 10px;
+      padding: 6px 10px; /* Reducimos el padding superior/inferior levemente */
+      margin-bottom: 8px; /* Ajustamos el margen inferior para ganar más espacio para la rutina */
     }
+    
     .routine-name {
-      font-size: 12pt;
-      font-weight: bold;
+      font-size: 11pt; /* Un tamaño intermedio para que entre todo en una línea */
       color: #111;
-    }
-    .student-name {
-      font-size: 10pt;
-      color: #333;
-      margin-top: 1px;
-    }
-    .meta-row {
-      font-size: 8pt;
-      color: #666;
-      margin-top: 1px;
     }
 
     .notes-box {
@@ -251,7 +241,7 @@
   </style>
 </head>
 <body>
-  <div class="running-header">
+<div class="running-header">
     <span th:text="${data.metadata.gym.name}">Gym</span>
     <span> &middot; </span>
     <span th:text="${data.metadata.routineName}">Rutina</span>
@@ -282,14 +272,12 @@
     </div>
 
     <div class="student-band" th:style="'border-left: 3px solid ' + ${data.metadata.gym.primaryColor}">
-      <div class="routine-name" th:text="${data.metadata.routineName}">Rutina</div>
-      <div class="student-name" th:text="${data.metadata.studentFullName}">Alumno</div>
-      <div class="meta-row">
+      <div class="routine-name">
+        <strong><span th:text="${data.metadata.studentFullName}">Alumno</span></strong>
+        <span> - </span>
         <span th:text="${data.metadata.assignedDateFormatted}">11/05/2026</span>
-        <span th:if="${data.metadata.objective != null}"> · Objetivo: </span>
-        <span th:if="${data.metadata.objective != null}" th:text="${data.metadata.objective}"></span>
-        <span th:if="${data.metadata.sport != null}"> · </span>
-        <span th:if="${data.metadata.sport != null}" th:text="${data.metadata.sport}"></span>
+        <span th:if="${data.metadata.objective != null}"> - Objetivo: <span th:text="${data.metadata.objective}"></span></span>
+        <span th:if="${data.metadata.sport != null}"> - <span th:text="${data.metadata.sport}"></span></span>
       </div>
     </div>
 

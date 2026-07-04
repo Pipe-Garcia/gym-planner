@@ -151,19 +151,21 @@ export function RoutineActionsBar({
 
   return (
     <>
-      {compact ? (
+    {compact ? (
         /* ── Modo compacto: para filas de lista ─────────────────────────── */
         <div className="flex items-center gap-1.5">
-          {canEdit ? (
+          {/* Botón Ver siempre visible */}
+          <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs">
+            <Link to={`/students/${studentId}/routines/${routine.id}`}>
+              Ver
+            </Link>
+          </Button>
+
+          {/* Botón Editar visible solo si corresponde */}
+          {canEdit && (
             <Button asChild size="sm" className="h-8 px-3 text-xs">
               <Link to={`/students/${studentId}/routines/${routine.id}/edit`}>
                 Editar
-              </Link>
-            </Button>
-          ) : (
-            <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs">
-              <Link to={`/students/${studentId}/routines/${routine.id}`}>
-                Ver
               </Link>
             </Button>
           )}
@@ -181,17 +183,6 @@ export function RoutineActionsBar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              {/* Ver (solo si el primario es Editar) */}
-              {canEdit && (
-                <DropdownMenuItem asChild>
-                  <Link to={`/students/${studentId}/routines/${routine.id}`}>
-                    Ver
-                  </Link>
-                </DropdownMenuItem>
-              )}
-
-              <DropdownMenuSeparator />
-
               <DropdownMenuItem
                 disabled={!hasContent}
                 onSelect={handleDownloadPdf}
