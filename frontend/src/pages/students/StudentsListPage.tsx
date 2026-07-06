@@ -20,12 +20,14 @@ export function StudentsListPage() {
   const [level, setLevel] = useState("")
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [pendingStudentId, setPendingStudentId] = useState<number | null>(null)
   const studentsQuery = useStudents({ search, active, sport, level, page, size: 20, sort: "lastName,asc" })
   const totalStudents = studentsQuery.data?.totalElements
   const deactivate = useDeactivateStudent()
   const reactivate = useReactivateStudent()
 
   async function toggleActive(student: StudentSummary) {
+    setPendingStudentId(student.id)
     try {
       if (student.active) {
         await deactivate.mutateAsync(student.id)
@@ -36,6 +38,8 @@ export function StudentsListPage() {
       }
     } catch {
       toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingStudentId(null)
     }
   }
 
@@ -110,7 +114,7 @@ export function StudentsListPage() {
             </div>
           ) : studentsQuery.data?.content.length ? (
             <>
-              <StudentList students={studentsQuery.data.content} onToggleActive={toggleActive} />
+              <StudentList students={studentsQuery.data.content} onToggleActive={toggleActive} pendingStudentId={pendingStudentId} />
               <Pagination page={studentsQuery.data.page} totalPages={studentsQuery.data.totalPages} onPage={setPage} />
             </>
           ) : (

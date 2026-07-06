@@ -1,4 +1,4 @@
-import { Edit, Plus, RotateCcw, UserMinus } from "lucide-react"
+import { Edit, Loader2, Plus, RotateCcw, UserMinus } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { DuplicateRoutineDialog } from "@/components/routine/DuplicateRoutineDialog"
@@ -56,6 +56,7 @@ export function StudentDetailPage() {
   const deleteNote = useDeleteNote(id)
   const deactivate = useDeactivateStudent()
   const reactivate = useReactivateStudent()
+  const isTogglePending = deactivate.isPending || reactivate.isPending
 
   if (studentQuery.isLoading) {
     return (
@@ -122,13 +123,16 @@ export function StudentDetailPage() {
             type="button"
             variant={student.active ? "destructive" : "outline"}
             onClick={toggleActive}
+            disabled={isTogglePending}
           >
-            {student.active ? (
+            {isTogglePending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : student.active ? (
               <UserMinus className="h-4 w-4" />
             ) : (
               <RotateCcw className="h-4 w-4" />
             )}
-            {student.active ? "Desactivar" : "Reactivar"}
+            {isTogglePending ? (student.active ? "Desactivando..." : "Reactivando...") : student.active ? "Desactivar" : "Reactivar"}
           </Button>
         </div>
       </div>

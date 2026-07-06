@@ -19,12 +19,14 @@ export function ExercisesListPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [pendingExerciseId, setPendingExerciseId] = useState<number | null>(null)
   const tagsQuery = useExerciseTags()
   const exercisesQuery = useExercises({ search, tagIds, active: showInactive ? undefined : true, page, size: 20, sort: "name,asc" })
   const deactivate = useDeactivateExercise()
   const reactivate = useReactivateExercise()
 
   async function toggleActive(exercise: ExerciseSummary) {
+    setPendingExerciseId(exercise.id)
     try {
       if (exercise.active) {
         await deactivate.mutateAsync(exercise.id)
@@ -35,6 +37,8 @@ export function ExercisesListPage() {
       }
     } catch {
       toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingExerciseId(null)
     }
   }
 
@@ -86,7 +90,7 @@ export function ExercisesListPage() {
             </div>
           ) : exercisesQuery.data?.content.length ? (
             <>
-              <ExerciseList exercises={exercisesQuery.data.content} onToggleActive={toggleActive} />
+              <ExerciseList exercises={exercisesQuery.data.content} onToggleActive={toggleActive} pendingExerciseId={pendingExerciseId} />
               <Pagination page={exercisesQuery.data.page} totalPages={exercisesQuery.data.totalPages} onPage={setPage} />
             </>
           ) : (

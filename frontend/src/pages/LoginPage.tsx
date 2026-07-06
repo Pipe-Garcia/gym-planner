@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Dumbbell } from "lucide-react"
+import { Dumbbell, Loader2 } from "lucide-react"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
@@ -85,6 +85,7 @@ export function LoginPage() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {form.formState.isSubmitting ? "Ingresando..." : "Ingresar"}
                 </Button>
               </form>

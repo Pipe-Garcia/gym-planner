@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { AxiosError } from "axios"
+import { Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -134,6 +135,7 @@ export function TagFormDialog({ open, tag, onOpenChange }: TagFormDialogProps) {
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {isPending ? "Guardando..." : isEditing ? "Guardar" : "Crear"}
               </Button>
             </div>

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Save } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -221,7 +221,7 @@ export function SettingsPage() {
               />
               <div className="md:col-span-2">
                 <Button type="submit" disabled={mutation.isPending}>
-                  <Save className="h-4 w-4" />
+                  {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {mutation.isPending ? "Guardando..." : "Guardar"}
                 </Button>
               </div>

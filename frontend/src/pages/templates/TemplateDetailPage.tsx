@@ -1,4 +1,4 @@
-import { Copy, Pencil, RotateCcw, Trash2 } from "lucide-react"
+import { Copy, Loader2, Pencil, RotateCcw, Trash2 } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { BackButton } from "@/components/shared/BackButton"
 import { TrainingPlanReadOnlyView } from "@/components/template/TrainingPlanReadOnlyView"
@@ -18,6 +18,7 @@ export function TemplateDetailPage() {
   const deactivate = useDeactivateTemplate()
   const reactivate = useReactivateTemplate()
   const template = templateQuery.data
+  const isTogglePending = deactivate.isPending || reactivate.isPending
 
   if (templateQuery.isLoading) return <div className="rounded-md border bg-white p-6 text-sm text-muted-foreground">Cargando plantilla...</div>
   if (!template) return <div className="rounded-md border bg-white p-6 text-sm text-muted-foreground">Plantilla no encontrada.</div>
@@ -67,12 +68,13 @@ export function TemplateDetailPage() {
           <Button asChild size="sm" className={actionButtonClass}>
             <Link to={`/templates/${template.id}/edit`}><Pencil className={actionIconClass} />Editar</Link>
           </Button>
-          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={onDuplicate}>
-            <Copy className={actionIconClass} />Duplicar
+          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={onDuplicate} disabled={duplicate.isPending}>
+            {duplicate.isPending ? <Loader2 className={`${actionIconClass} animate-spin`} /> : <Copy className={actionIconClass} />}
+            {duplicate.isPending ? "Duplicando..." : "Duplicar"}
           </Button>
-          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={onToggleActive}>
-            {template.active ? <Trash2 className={actionIconClass} /> : <RotateCcw className={actionIconClass} />}
-            {template.active ? "Desactivar" : "Reactivar"}
+          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={onToggleActive} disabled={isTogglePending}>
+            {isTogglePending ? <Loader2 className={`${actionIconClass} animate-spin`} /> : template.active ? <Trash2 className={actionIconClass} /> : <RotateCcw className={actionIconClass} />}
+            {isTogglePending ? (template.active ? "Desactivando..." : "Reactivando...") : template.active ? "Desactivar" : "Reactivar"}
           </Button>
         </div>
       </div>

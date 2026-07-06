@@ -1,4 +1,4 @@
-import { Edit, RotateCcw, XCircle } from "lucide-react"
+import { Edit, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { BackButton } from "@/components/shared/BackButton"
@@ -15,6 +15,7 @@ export function ExerciseDetailPage() {
   const exerciseQuery = useExercise(id)
   const deactivate = useDeactivateExercise()
   const reactivate = useReactivateExercise()
+  const isTogglePending = deactivate.isPending || reactivate.isPending
 
   if (exerciseQuery.isLoading) {
     return (
@@ -65,9 +66,9 @@ export function ExerciseDetailPage() {
               Editar
             </Link>
           </Button>
-          <Button type="button" variant={exercise.active ? "destructive" : "outline"} onClick={toggleActive}>
-            {exercise.active ? <XCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-            {exercise.active ? "Desactivar" : "Reactivar"}
+          <Button type="button" variant={exercise.active ? "destructive" : "outline"} onClick={toggleActive} disabled={isTogglePending}>
+            {isTogglePending ? <Loader2 className="h-4 w-4 animate-spin" /> : exercise.active ? <XCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+            {isTogglePending ? (exercise.active ? "Desactivando..." : "Reactivando...") : exercise.active ? "Desactivar" : "Reactivar"}
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Edit, Eye, RotateCcw, UserMinus } from "lucide-react"
+import { Edit, Eye, Loader2, RotateCcw, UserMinus } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import type { StudentSummary } from "@/types/student"
@@ -6,9 +6,10 @@ import type { StudentSummary } from "@/types/student"
 interface StudentListProps {
   students: StudentSummary[]
   onToggleActive: (student: StudentSummary) => void
+  pendingStudentId?: number | null
 }
 
-export function StudentList({ students, onToggleActive }: StudentListProps) {
+export function StudentList({ students, onToggleActive, pendingStudentId }: StudentListProps) {
   return (
     <div>
       <div className="hidden overflow-x-auto rounded-md border bg-white md:block">
@@ -25,7 +26,9 @@ export function StudentList({ students, onToggleActive }: StudentListProps) {
             </tr>
           </thead>
           <tbody>
-            {students.map((student) => (
+            {students.map((student) => {
+              const isPending = pendingStudentId === student.id
+              return (
               <tr key={student.id} className="border-t">
                 <td className="px-4 py-3 font-medium">
                   {student.lastName}, {student.firstName}
@@ -49,19 +52,22 @@ export function StudentList({ students, onToggleActive }: StudentListProps) {
                         <Edit className="h-4 w-4" />
                       </Link>
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => onToggleActive(student)} aria-label="Cambiar estado">
-                      {student.active ? <UserMinus className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                    <Button type="button" variant="ghost" size="icon" onClick={() => onToggleActive(student)} disabled={isPending} aria-label="Cambiar estado">
+                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : student.active ? <UserMinus className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                     </Button>
                   </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
 
       <div className="grid gap-3 md:hidden">
-        {students.map((student) => (
+        {students.map((student) => {
+          const isPending = pendingStudentId === student.id
+          return (
           <article key={student.id} className="rounded-md border bg-white p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -93,12 +99,13 @@ export function StudentList({ students, onToggleActive }: StudentListProps) {
               <Button type="button" variant="outline" className="flex-1" asChild>
                 <Link to={`/students/${student.id}/edit`}>Editar</Link>
               </Button>
-              <Button type="button" variant="ghost" size="icon" onClick={() => onToggleActive(student)} aria-label="Cambiar estado">
-                {student.active ? <UserMinus className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+              <Button type="button" variant="ghost" size="icon" onClick={() => onToggleActive(student)} disabled={isPending} aria-label="Cambiar estado">
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : student.active ? <UserMinus className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
               </Button>
             </div>
           </article>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

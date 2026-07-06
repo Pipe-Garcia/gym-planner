@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { AxiosError } from "axios"
-import { Save } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
@@ -65,6 +65,8 @@ export function ExerciseForm({ tags, initialData, onSubmit, submitLabel }: Exerc
       toast.error(apiError.response?.data.message ?? "No pudimos guardar el ejercicio.")
     }
   }
+
+  const isSubmitting = form.formState.isSubmitting
 
   return (
     <Form {...form}>
@@ -160,9 +162,9 @@ export function ExerciseForm({ tags, initialData, onSubmit, submitLabel }: Exerc
             />
           </div>
         </details>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          <Save className="h-4 w-4" />
-          {form.formState.isSubmitting ? "Guardando..." : submitLabel}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {isSubmitting ? "Guardando..." : submitLabel}
         </Button>
       </form>
     </Form>

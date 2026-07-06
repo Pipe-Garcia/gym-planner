@@ -1,8 +1,13 @@
 import { TemplateCard } from "@/components/template/TemplateCard"
 import type { TemplateSummary } from "@/types/training"
 
-interface Props { templates: TemplateSummary[]; onDuplicate: (id: number) => void; onDeactivate: (id: number) => void; onReactivate: (id: number) => void }
+type PendingTemplateAction = {
+  id: number
+  action: "duplicate" | "deactivate" | "reactivate"
+} | null
 
-export function TemplateList({ templates, onDuplicate, onDeactivate, onReactivate }: Props) {
-  return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{templates.map((template) => <TemplateCard key={template.id} template={template} onDuplicate={() => onDuplicate(template.id)} onDeactivate={() => onDeactivate(template.id)} onReactivate={() => onReactivate(template.id)} />)}</div>
+interface Props { templates: TemplateSummary[]; onDuplicate: (id: number) => void; onDeactivate: (id: number) => void; onReactivate: (id: number) => void; pendingAction?: PendingTemplateAction }
+
+export function TemplateList({ templates, onDuplicate, onDeactivate, onReactivate, pendingAction }: Props) {
+  return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{templates.map((template) => <TemplateCard key={template.id} template={template} onDuplicate={() => onDuplicate(template.id)} onDeactivate={() => onDeactivate(template.id)} onReactivate={() => onReactivate(template.id)} pendingAction={pendingAction?.id === template.id ? pendingAction.action : null} />)}</div>
 }
