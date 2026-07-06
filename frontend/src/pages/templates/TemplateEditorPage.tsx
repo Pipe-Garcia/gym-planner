@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Save } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 import { useEffect } from "react"
 import { FormProvider, useForm, useWatch, type FieldErrors, type Resolver } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
@@ -35,6 +35,7 @@ export function TemplateEditorPage() {
   const update = useUpdateTemplate(id ?? 0)
   const form = useForm<TemplateFormValues>({ resolver: zodResolver(templateFormSchema) as unknown as Resolver<TemplateFormValues>, defaultValues })
   const watchedName = useWatch({ control: form.control, name: "name" })
+  const isSaving = create.isPending || update.isPending
 
   useEffect(() => {
     if (templateQuery.data) form.reset(templateToForm(templateQuery.data))
@@ -69,9 +70,9 @@ export function TemplateEditorPage() {
             </h1>
             <p className="text-sm text-muted-foreground">Dias, bloques, ejercicios y sets explicitos.</p>
           </div>
-          <Button type="submit">
-            <Save className="h-4 w-4" />
-            Guardar plantilla
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isSaving ? "Guardando..." : "Guardar plantilla"}
           </Button>
         </div>
         <TemplateMetadataForm />

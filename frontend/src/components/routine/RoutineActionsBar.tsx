@@ -1,4 +1,7 @@
 import {
+  useMutation,
+} from "@tanstack/react-query"
+import {
   Archive,
   CheckCircle,
   Download,
@@ -98,9 +101,9 @@ export function RoutineActionsBar({
         ? "El alumno no tiene un teléfono válido cargado"
         : null
 
-  async function handleDownloadPdf() {
-    try {
-      const { blob, filename } = await downloadRoutinePdf(routine.id)
+  const downloadPdf = useMutation({
+    mutationFn: () => downloadRoutinePdf(routine.id),
+    onSuccess: ({ blob, filename }) => {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
@@ -110,22 +113,26 @@ export function RoutineActionsBar({
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
       toast.success("PDF descargado.")
-    } catch (error) {
+    },
+    onError: (error) => {
       toast.error("No se pudo generar el PDF.")
       console.error(error)
-    }
-  }
+    },
+  })
 
-  async function handleCopyWhatsApp() {
-    try {
+  const copyWhatsApp = useMutation({
+    mutationFn: async () => {
       const text = await getRoutineWhatsAppText(routine.id)
       await navigator.clipboard.writeText(text)
+    },
+    onSuccess: () => {
       toast.success("Texto copiado al portapapeles.")
-    } catch (error) {
+    },
+    onError: (error) => {
       toast.error("No se pudo copiar. Probá de nuevo.")
       console.error(error)
-    }
-  }
+    },
+  })
 
   function handleSendWhatsApp() {
     if (!normalizedStudentPhone) return
@@ -184,18 +191,18 @@ export function RoutineActionsBar({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem
-                disabled={!hasContent}
-                onSelect={handleDownloadPdf}
+                disabled={!hasContent || downloadPdf.isPending}
+                onSelect={() => downloadPdf.mutate()}
               >
-                <Download className="mr-2 h-4 w-4" />
-                PDF
+                {downloadPdf.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {downloadPdf.isPending ? "Generando PDF..." : "PDF"}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!hasContent}
-                onSelect={handleCopyWhatsApp}
+                disabled={!hasContent || copyWhatsApp.isPending}
+                onSelect={() => copyWhatsApp.mutate()}
               >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                WhatsApp
+                {copyWhatsApp.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-4 w-4" />}
+                {copyWhatsApp.isPending ? "Copiando..." : "WhatsApp"}
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
@@ -259,11 +266,11 @@ export function RoutineActionsBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={!hasContent}
-                onClick={handleDownloadPdf}
+                disabled={!hasContent || downloadPdf.isPending}
+                onClick={() => downloadPdf.mutate()}
               >
-                <Download className="h-4 w-4" />
-                PDF
+                {downloadPdf.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {downloadPdf.isPending ? "Generando PDF..." : "PDF"}
               </Button>
               {sendWhatsAppDisabled ? (
                 <TooltipProvider>
@@ -351,11 +358,11 @@ export function RoutineActionsBar({
                 {mode === "view" && (
                   <>
                     <DropdownMenuItem
-                      disabled={!hasContent}
-                      onSelect={handleCopyWhatsApp}
+                      disabled={!hasContent || copyWhatsApp.isPending}
+                      onSelect={() => copyWhatsApp.mutate()}
                     >
-                      <MessageCircle className="mr-2 h-4 w-4" />
-                      Copiar texto WhatsApp
+                      {copyWhatsApp.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-4 w-4" />}
+                      {copyWhatsApp.isPending ? "Copiando..." : "Copiar texto WhatsApp"}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>

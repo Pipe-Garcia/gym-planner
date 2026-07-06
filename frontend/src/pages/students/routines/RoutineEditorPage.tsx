@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Info, Save } from "lucide-react"
+import { Info, Loader2, Save } from "lucide-react"
 import { useEffect } from "react"
 import { FormProvider, useForm, type FieldErrors, type Resolver } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
@@ -70,9 +70,9 @@ export function RoutineEditorPage() {
             <RoutineIdentityHeader routine={routine} />
             <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
             {!readOnly ? (
-              <Button type="submit">
-                <Save className="h-4 w-4" />
-                Guardar cambios
+              <Button type="submit" disabled={update.isPending}>
+                {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {update.isPending ? "Guardando..." : "Guardar cambios"}
               </Button>
             ) : null}
               <RoutineActionsBar routine={routine} studentId={studentId} mode="editor" onRoutineChanged={() => { void routineQuery.refetch() }} />
