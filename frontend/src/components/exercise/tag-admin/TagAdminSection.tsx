@@ -103,6 +103,8 @@ export function TagAdminSection() {
         onOpenChange={(open) => {
           if (!open) setDeletingTag(null)
         }}
+        isPending={deleteTag.isPending}
+        loadingLabel="Eliminando..."
         onConfirm={() => {
           void confirmDelete()
         }}

@@ -2,6 +2,7 @@ import { Filter, Plus } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { StudentFilters } from "@/components/student/StudentFilters"
 import { StudentList } from "@/components/student/StudentList"
@@ -21,21 +22,35 @@ export function StudentsListPage() {
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [pendingStudentId, setPendingStudentId] = useState<number | null>(null)
+  const [studentToDeactivate, setStudentToDeactivate] = useState<StudentSummary | null>(null)
   const studentsQuery = useStudents({ search, active, sport, level, page, size: 20, sort: "lastName,asc" })
   const totalStudents = studentsQuery.data?.totalElements
   const deactivate = useDeactivateStudent()
   const reactivate = useReactivateStudent()
 
   async function toggleActive(student: StudentSummary) {
+    if (student.active) {
+      setStudentToDeactivate(student)
+      return
+    }
     setPendingStudentId(student.id)
     try {
-      if (student.active) {
-        await deactivate.mutateAsync(student.id)
-        toast.success("Alumno desactivado.")
-      } else {
-        await reactivate.mutateAsync(student.id)
-        toast.success("Alumno reactivado.")
-      }
+      await reactivate.mutateAsync(student.id)
+      toast.success("Alumno reactivado.")
+    } catch {
+      toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingStudentId(null)
+    }
+  }
+
+  async function confirmDeactivateStudent() {
+    if (!studentToDeactivate) return
+    setPendingStudentId(studentToDeactivate.id)
+    try {
+      await deactivate.mutateAsync(studentToDeactivate.id)
+      toast.success("Alumno desactivado.")
+      setStudentToDeactivate(null)
     } catch {
       toast.error("No pudimos cambiar el estado.")
     } finally {
@@ -131,6 +146,20 @@ export function StudentsListPage() {
           {filters}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(studentToDeactivate)}
+        onOpenChange={(open) => {
+          if (!open) setStudentToDeactivate(null)
+        }}
+        title="Desactivar alumno"
+        description="El alumno dejará de aparecer en los listados activos. Podés reactivarlo más adelante."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateStudent()
+        }}
+      />
     </div>
   )
 }

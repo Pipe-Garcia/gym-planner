@@ -1,6 +1,8 @@
 import { Copy, Loader2, Pencil, RotateCcw, Trash2 } from "lucide-react"
+import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { BackButton } from "@/components/shared/BackButton"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { TrainingPlanReadOnlyView } from "@/components/template/TrainingPlanReadOnlyView"
 import { Button } from "@/components/ui/button"
 import { useDeactivateTemplate, useDuplicateTemplate, useReactivateTemplate, useTemplate } from "@/hooks/useTemplates"
@@ -13,6 +15,7 @@ export function TemplateDetailPage() {
   const id = Number(useParams().id)
   const navigate = useNavigate()
   const toast = useToast()
+  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = useState(false)
   const templateQuery = useTemplate(id)
   const duplicate = useDuplicateTemplate()
   const deactivate = useDeactivateTemplate()
@@ -29,14 +32,20 @@ export function TemplateDetailPage() {
     navigate(`/templates/${copy.id}/edit`)
   }
 
-  async function onToggleActive() {
+  async function onReactivate() {
     if (template?.active) {
-      await deactivate.mutateAsync(id)
-      toast.success("Plantilla desactivada.")
-    } else {
-      await reactivate.mutateAsync(id)
-      toast.success("Plantilla reactivada.")
+      return
     }
+    await reactivate.mutateAsync(id)
+    toast.success("Plantilla reactivada.")
+    await templateQuery.refetch()
+  }
+
+  async function onDeactivate() {
+    if (!template?.active) return
+    await deactivate.mutateAsync(id)
+    toast.success("Plantilla desactivada.")
+    setDeactivateConfirmOpen(false)
     await templateQuery.refetch()
   }
 
@@ -72,12 +81,24 @@ export function TemplateDetailPage() {
             {duplicate.isPending ? <Loader2 className={`${actionIconClass} animate-spin`} /> : <Copy className={actionIconClass} />}
             {duplicate.isPending ? "Duplicando..." : "Duplicar"}
           </Button>
-          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={onToggleActive} disabled={isTogglePending}>
+          <Button type="button" size="sm" variant="outline" className={actionButtonClass} onClick={template.active ? () => setDeactivateConfirmOpen(true) : onReactivate} disabled={isTogglePending}>
             {isTogglePending ? <Loader2 className={`${actionIconClass} animate-spin`} /> : template.active ? <Trash2 className={actionIconClass} /> : <RotateCcw className={actionIconClass} />}
             {isTogglePending ? (template.active ? "Desactivando..." : "Reactivando...") : template.active ? "Desactivar" : "Reactivar"}
           </Button>
         </div>
       </div>
+      <ConfirmDialog
+        open={deactivateConfirmOpen}
+        onOpenChange={setDeactivateConfirmOpen}
+        title="Desactivar plantilla"
+        description="La plantilla dejará de estar disponible para crear nuevas rutinas. Podés reactivarla más adelante."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void onDeactivate()
+        }}
+      />
       <TrainingPlanReadOnlyView days={template.days} context="template" />
     </div>
   )

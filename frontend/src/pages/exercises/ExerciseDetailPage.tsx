@@ -1,7 +1,9 @@
 import { Edit, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
+import { useState } from "react"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { BackButton } from "@/components/shared/BackButton"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { TagBadge } from "@/components/exercise/TagBadge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,6 +14,7 @@ import { measurementTypeLabel } from "@/lib/format"
 export function ExerciseDetailPage() {
   const toast = useToast()
   const id = Number(useParams().id)
+  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = useState(false)
   const exerciseQuery = useExercise(id)
   const deactivate = useDeactivateExercise()
   const reactivate = useReactivateExercise()
@@ -30,16 +33,23 @@ export function ExerciseDetailPage() {
     return <p className="text-sm text-muted-foreground">Ejercicio no encontrado.</p>
   }
 
-  async function toggleActive() {
+  async function reactivateExercise() {
     if (!exercise) return
     try {
-      if (exercise.active) {
-        await deactivate.mutateAsync(exercise.id)
-        toast.success("Ejercicio desactivado.")
-      } else {
-        await reactivate.mutateAsync(exercise.id)
-        toast.success("Ejercicio reactivado.")
-      }
+      await reactivate.mutateAsync(exercise.id)
+      toast.success("Ejercicio reactivado.")
+      await exerciseQuery.refetch()
+    } catch {
+      toast.error("No pudimos cambiar el estado.")
+    }
+  }
+
+  async function confirmDeactivateExercise() {
+    if (!exercise) return
+    try {
+      await deactivate.mutateAsync(exercise.id)
+      toast.success("Ejercicio desactivado.")
+      setDeactivateConfirmOpen(false)
       await exerciseQuery.refetch()
     } catch {
       toast.error("No pudimos cambiar el estado.")
@@ -66,12 +76,24 @@ export function ExerciseDetailPage() {
               Editar
             </Link>
           </Button>
-          <Button type="button" variant={exercise.active ? "destructive" : "outline"} onClick={toggleActive} disabled={isTogglePending}>
+          <Button type="button" variant={exercise.active ? "destructive" : "outline"} onClick={exercise.active ? () => setDeactivateConfirmOpen(true) : reactivateExercise} disabled={isTogglePending}>
             {isTogglePending ? <Loader2 className="h-4 w-4 animate-spin" /> : exercise.active ? <XCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
             {isTogglePending ? (exercise.active ? "Desactivando..." : "Reactivando...") : exercise.active ? "Desactivar" : "Reactivar"}
           </Button>
         </div>
       </div>
+      <ConfirmDialog
+        open={deactivateConfirmOpen}
+        onOpenChange={setDeactivateConfirmOpen}
+        title="Desactivar ejercicio"
+        description="El ejercicio dejará de estar disponible para nuevas rutinas, pero no se elimina el historial existente."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateExercise()
+        }}
+      />
 
       <Card>
         <CardContent className="space-y-5 p-6">

@@ -2,6 +2,7 @@ import { Filter, Plus, Search } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { ExerciseList } from "@/components/exercise/ExerciseList"
 import { TagFilter } from "@/components/exercise/TagFilter"
@@ -20,21 +21,35 @@ export function ExercisesListPage() {
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [pendingExerciseId, setPendingExerciseId] = useState<number | null>(null)
+  const [exerciseToDeactivate, setExerciseToDeactivate] = useState<ExerciseSummary | null>(null)
   const tagsQuery = useExerciseTags()
   const exercisesQuery = useExercises({ search, tagIds, active: showInactive ? undefined : true, page, size: 20, sort: "name,asc" })
   const deactivate = useDeactivateExercise()
   const reactivate = useReactivateExercise()
 
   async function toggleActive(exercise: ExerciseSummary) {
+    if (exercise.active) {
+      setExerciseToDeactivate(exercise)
+      return
+    }
     setPendingExerciseId(exercise.id)
     try {
-      if (exercise.active) {
-        await deactivate.mutateAsync(exercise.id)
-        toast.success("Ejercicio desactivado.")
-      } else {
-        await reactivate.mutateAsync(exercise.id)
-        toast.success("Ejercicio reactivado.")
-      }
+      await reactivate.mutateAsync(exercise.id)
+      toast.success("Ejercicio reactivado.")
+    } catch {
+      toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingExerciseId(null)
+    }
+  }
+
+  async function confirmDeactivateExercise() {
+    if (!exerciseToDeactivate) return
+    setPendingExerciseId(exerciseToDeactivate.id)
+    try {
+      await deactivate.mutateAsync(exerciseToDeactivate.id)
+      toast.success("Ejercicio desactivado.")
+      setExerciseToDeactivate(null)
     } catch {
       toast.error("No pudimos cambiar el estado.")
     } finally {
@@ -107,6 +122,20 @@ export function ExercisesListPage() {
           {filters}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(exerciseToDeactivate)}
+        onOpenChange={(open) => {
+          if (!open) setExerciseToDeactivate(null)
+        }}
+        title="Desactivar ejercicio"
+        description="El ejercicio dejará de estar disponible para nuevas rutinas, pero no se elimina el historial existente."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateExercise()
+        }}
+      />
     </div>
   )
 }

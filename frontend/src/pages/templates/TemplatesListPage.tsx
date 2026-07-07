@@ -1,11 +1,13 @@
 import { FileStack, Plus } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { TemplateList } from "@/components/template/TemplateList"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useDeactivateTemplate, useDuplicateTemplate, useReactivateTemplate, useTemplates } from "@/hooks/useTemplates"
 import { useToast } from "@/hooks/useToast"
+import type { TemplateSummary } from "@/types/training"
 
 type PendingTemplateAction = {
   id: number
@@ -17,6 +19,7 @@ export function TemplatesListPage() {
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
   const [pendingAction, setPendingAction] = useState<PendingTemplateAction>(null)
+  const [templateToDeactivate, setTemplateToDeactivate] = useState<TemplateSummary | null>(null)
   const query = useTemplates({ search: search || undefined, active: showInactive ? undefined : true, page: 0, size: 30, sort: "name,asc" })
   const duplicate = useDuplicateTemplate()
   const deactivate = useDeactivateTemplate()
@@ -33,10 +36,17 @@ export function TemplatesListPage() {
   }
 
   async function onDeactivate(id: number) {
-    setPendingAction({ id, action: "deactivate" })
+    const template = query.data?.content.find((item) => item.id === id)
+    if (template) setTemplateToDeactivate(template)
+  }
+
+  async function confirmDeactivateTemplate() {
+    if (!templateToDeactivate) return
+    setPendingAction({ id: templateToDeactivate.id, action: "deactivate" })
     try {
-      await deactivate.mutateAsync(id)
+      await deactivate.mutateAsync(templateToDeactivate.id)
       toast.success("Plantilla desactivada.")
+      setTemplateToDeactivate(null)
     } finally {
       setPendingAction(null)
     }
@@ -63,6 +73,20 @@ export function TemplatesListPage() {
         <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />Mostrar inactivas</label>
       </div>
       {query.data?.content.length ? <TemplateList templates={query.data.content} onDuplicate={onDuplicate} onDeactivate={onDeactivate} onReactivate={onReactivate} pendingAction={pendingAction} /> : <div className="rounded-md border bg-white p-8 text-center text-sm text-muted-foreground"><FileStack className="mx-auto mb-2 h-8 w-8" />No hay plantillas.</div>}
+      <ConfirmDialog
+        open={Boolean(templateToDeactivate)}
+        onOpenChange={(open) => {
+          if (!open) setTemplateToDeactivate(null)
+        }}
+        title="Desactivar plantilla"
+        description="La plantilla dejará de estar disponible para crear nuevas rutinas. Podés reactivarla más adelante."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateTemplate()
+        }}
+      />
     </div>
   )
 }
