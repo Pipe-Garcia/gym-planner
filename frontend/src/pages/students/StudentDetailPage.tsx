@@ -1,10 +1,10 @@
-import { Edit, Plus, RotateCcw, UserMinus } from "lucide-react"
+import { Edit, Loader2, Plus, RotateCcw, UserMinus } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { DuplicateRoutineDialog } from "@/components/routine/DuplicateRoutineDialog"
 import { RoutineActionsBar } from "@/components/routine/RoutineActionsBar"
 import { BackButton } from "@/components/shared/BackButton"
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { StudentExerciseHistorySection } from "@/components/student/history/StudentExerciseHistorySection"
 import { StudentHistoryEmptyState } from "@/components/student/history/StudentHistoryEmptyState"
 import { StudentHistorySummary } from "@/components/student/history/StudentHistorySummary"
@@ -15,6 +15,7 @@ import { NoteForm } from "@/components/student/NoteForm"
 import { NoteList } from "@/components/student/NoteList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useRoutine, useStudentRoutines } from "@/hooks/useRoutines"
 import { useStudentHistorySummary } from "@/hooks/useStudentHistory"
 import {
@@ -31,6 +32,7 @@ import {
 import { useToast } from "@/hooks/useToast"
 import { formatDateEs } from "@/lib/date"
 import { routineStatusBadgeClass, routineStatusLabel } from "@/lib/labels"
+import type { StudentInjury, StudentNote } from "@/types/student"
 import type { RoutineSummary } from "@/types/training"
 
 const tabs = ["Datos", "Lesiones", "Notas", "Rutinas", "Historial"] as const
@@ -41,6 +43,9 @@ export function StudentDetailPage() {
   const id = Number(useParams().id)
   const [tab, setTab] = useState<Tab>("Datos")
   const [injuryOpen, setInjuryOpen] = useState(false)
+  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = useState(false)
+  const [injuryToResolve, setInjuryToResolve] = useState<StudentInjury | null>(null)
+  const [noteToDelete, setNoteToDelete] = useState<StudentNote | null>(null)
 
   const studentQuery = useStudent(id)
   const routinesQuery = useStudentRoutines(id, {
@@ -56,13 +61,10 @@ export function StudentDetailPage() {
   const deleteNote = useDeleteNote(id)
   const deactivate = useDeactivateStudent()
   const reactivate = useReactivateStudent()
+  const isTogglePending = deactivate.isPending || reactivate.isPending
 
   if (studentQuery.isLoading) {
-    return (
-      <div className="flex min-h-80 items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    )
+    return <StudentDetailSkeleton />
   }
 
   const student = studentQuery.data
@@ -71,20 +73,41 @@ export function StudentDetailPage() {
       <p className="text-sm text-muted-foreground">Alumno no encontrado.</p>
     )
 
-  async function toggleActive() {
+  async function reactivateStudent() {
     if (!student) return
     try {
-      if (student.active) {
-        await deactivate.mutateAsync(student.id)
-        toast.success("Alumno desactivado.")
-      } else {
-        await reactivate.mutateAsync(student.id)
-        toast.success("Alumno reactivado.")
-      }
+      await reactivate.mutateAsync(student.id)
+      toast.success("Alumno reactivado.")
       await studentQuery.refetch()
     } catch {
       toast.error("No pudimos cambiar el estado.")
     }
+  }
+
+  async function confirmDeactivateStudent() {
+    if (!student) return
+    try {
+      await deactivate.mutateAsync(student.id)
+      toast.success("Alumno desactivado.")
+      setDeactivateConfirmOpen(false)
+      await studentQuery.refetch()
+    } catch {
+      toast.error("No pudimos cambiar el estado.")
+    }
+  }
+
+  async function confirmResolveInjury() {
+    if (!injuryToResolve) return
+    await deleteInjury.mutateAsync(injuryToResolve.id)
+    toast.success("LesiÃ³n resuelta.")
+    setInjuryToResolve(null)
+  }
+
+  async function confirmDeleteNote() {
+    if (!noteToDelete) return
+    await deleteNote.mutateAsync(noteToDelete.id)
+    toast.success("Nota eliminada.")
+    setNoteToDelete(null)
   }
 
   return (
@@ -121,17 +144,32 @@ export function StudentDetailPage() {
           <Button
             type="button"
             variant={student.active ? "destructive" : "outline"}
-            onClick={toggleActive}
+            onClick={student.active ? () => setDeactivateConfirmOpen(true) : reactivateStudent}
+            disabled={isTogglePending}
           >
-            {student.active ? (
+            {isTogglePending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : student.active ? (
               <UserMinus className="h-4 w-4" />
             ) : (
               <RotateCcw className="h-4 w-4" />
             )}
-            {student.active ? "Desactivar" : "Reactivar"}
+            {isTogglePending ? (student.active ? "Desactivando..." : "Reactivando...") : student.active ? "Desactivar" : "Reactivar"}
           </Button>
         </div>
       </div>
+      <ConfirmDialog
+        open={deactivateConfirmOpen}
+        onOpenChange={setDeactivateConfirmOpen}
+        title="Desactivar alumno"
+        description="El alumno dejará de aparecer en los listados activos. Podés reactivarlo más adelante."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateStudent()
+        }}
+      />
 
       <div className="overflow-x-auto">
         <div className="flex min-w-max gap-2 border-b">
@@ -159,10 +197,7 @@ export function StudentDetailPage() {
           <InjuryList
             injuries={injuriesQuery.data ?? []}
             onAdd={() => setInjuryOpen(true)}
-            onResolve={async (injury) => {
-              await deleteInjury.mutateAsync(injury.id)
-              toast.success("Lesión resuelta.")
-            }}
+            onResolve={setInjuryToResolve}
           />
           <InjuryForm
             open={injuryOpen}
@@ -185,10 +220,7 @@ export function StudentDetailPage() {
           />
           <NoteList
             notes={notesQuery.data ?? []}
-            onDelete={async (note) => {
-              await deleteNote.mutateAsync(note.id)
-              toast.success("Nota eliminada.")
-            }}
+            onDelete={setNoteToDelete}
           />
         </section>
       )}
@@ -203,6 +235,70 @@ export function StudentDetailPage() {
       {tab === "Historial" && (
         <StudentHistoryTab studentId={student.id} />
       )}
+      <ConfirmDialog
+        open={Boolean(injuryToResolve)}
+        onOpenChange={(open) => {
+          if (!open) setInjuryToResolve(null)
+        }}
+        title="Resolver lesión"
+        description="La lesión dejará de aparecer en el seguimiento activo del alumno. No hay una acción simple para reactivarla desde esta pantalla."
+        confirmLabel="Resolver"
+        loadingLabel="Resolviendo..."
+        isPending={deleteInjury.isPending}
+        onConfirm={() => {
+          void confirmResolveInjury()
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(noteToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setNoteToDelete(null)
+        }}
+        title="Eliminar nota"
+        description="Esta acción eliminará la nota del alumno. No afecta sus rutinas ni su historial."
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando..."
+        isPending={deleteNote.isPending}
+        onConfirm={() => {
+          void confirmDeleteNote()
+        }}
+      />
+    </div>
+  )
+}
+
+function StudentDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-9 w-24" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+      </div>
+      <div className="flex min-w-max gap-2 border-b">
+        {tabs.map((item) => (
+          <Skeleton key={item} className="my-3 h-4 w-20" />
+        ))}
+      </div>
+      <Card>
+        <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className={index === 7 ? "space-y-2 sm:col-span-2" : "space-y-2"}>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }

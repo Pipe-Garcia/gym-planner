@@ -2,12 +2,13 @@ import { Filter, Plus } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { StudentFilters } from "@/components/student/StudentFilters"
 import { StudentList } from "@/components/student/StudentList"
 import { StudentSearchBar } from "@/components/student/StudentSearchBar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useDeactivateStudent, useReactivateStudent, useStudents } from "@/hooks/useStudents"
 import { useToast } from "@/hooks/useToast"
 import type { StudentSummary } from "@/types/student"
@@ -20,22 +21,40 @@ export function StudentsListPage() {
   const [level, setLevel] = useState("")
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [pendingStudentId, setPendingStudentId] = useState<number | null>(null)
+  const [studentToDeactivate, setStudentToDeactivate] = useState<StudentSummary | null>(null)
   const studentsQuery = useStudents({ search, active, sport, level, page, size: 20, sort: "lastName,asc" })
   const totalStudents = studentsQuery.data?.totalElements
   const deactivate = useDeactivateStudent()
   const reactivate = useReactivateStudent()
 
   async function toggleActive(student: StudentSummary) {
+    if (student.active) {
+      setStudentToDeactivate(student)
+      return
+    }
+    setPendingStudentId(student.id)
     try {
-      if (student.active) {
-        await deactivate.mutateAsync(student.id)
-        toast.success("Alumno desactivado.")
-      } else {
-        await reactivate.mutateAsync(student.id)
-        toast.success("Alumno reactivado.")
-      }
+      await reactivate.mutateAsync(student.id)
+      toast.success("Alumno reactivado.")
     } catch {
       toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingStudentId(null)
+    }
+  }
+
+  async function confirmDeactivateStudent() {
+    if (!studentToDeactivate) return
+    setPendingStudentId(studentToDeactivate.id)
+    try {
+      await deactivate.mutateAsync(studentToDeactivate.id)
+      toast.success("Alumno desactivado.")
+      setStudentToDeactivate(null)
+    } catch {
+      toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingStudentId(null)
     }
   }
 
@@ -105,12 +124,10 @@ export function StudentsListPage() {
           )}
 
           {studentsQuery.isLoading ? (
-            <div className="flex min-h-64 items-center justify-center">
-              <LoadingSpinner />
-            </div>
+            <StudentsListSkeleton />
           ) : studentsQuery.data?.content.length ? (
             <>
-              <StudentList students={studentsQuery.data.content} onToggleActive={toggleActive} />
+              <StudentList students={studentsQuery.data.content} onToggleActive={toggleActive} pendingStudentId={pendingStudentId} />
               <Pagination page={studentsQuery.data.page} totalPages={studentsQuery.data.totalPages} onPage={setPage} />
             </>
           ) : (
@@ -127,6 +144,84 @@ export function StudentsListPage() {
           {filters}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(studentToDeactivate)}
+        onOpenChange={(open) => {
+          if (!open) setStudentToDeactivate(null)
+        }}
+        title="Desactivar alumno"
+        description="El alumno dejará de aparecer en los listados activos. Podés reactivarlo más adelante."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateStudent()
+        }}
+      />
+    </div>
+  )
+}
+
+function StudentsListSkeleton() {
+  return (
+    <div>
+      <div className="hidden overflow-x-auto rounded-md border bg-white md:block">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/70 text-left">
+            <tr>
+              <th className="px-4 py-3 font-medium">Apellido y nombre</th>
+              <th className="px-4 py-3 font-medium">DNI</th>
+              <th className="px-4 py-3 font-medium">Teléfono</th>
+              <th className="px-4 py-3 font-medium">Deporte</th>
+              <th className="px-4 py-3 font-medium">Nivel</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 text-right font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <tr key={index} className="border-t">
+                <td className="px-4 py-3"><Skeleton className="h-4 w-40" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-6 w-16 rounded-full" /></td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-9" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-md border bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 w-9" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

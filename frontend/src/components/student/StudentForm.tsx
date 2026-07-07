@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { AxiosError } from "axios"
-import { Save } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
@@ -115,6 +115,8 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
     }
   }
 
+  const isSubmitting = form.formState.isSubmitting || isSaving
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
@@ -154,9 +156,9 @@ export function StudentForm({ initialData, onSubmit, submitLabel }: StudentFormP
             />
           </CardContent>
         </Card>
-        <Button type="submit" disabled={form.formState.isSubmitting || isSaving}>
-          <Save className="h-4 w-4" />
-          {form.formState.isSubmitting || isSaving ? "Guardando..." : submitLabel}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {isSubmitting ? "Guardando..." : submitLabel}
         </Button>
       </form>
       <AlertDialog

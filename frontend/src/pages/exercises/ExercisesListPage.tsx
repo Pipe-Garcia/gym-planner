@@ -2,12 +2,13 @@ import { Filter, Plus, Search } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { ExerciseList } from "@/components/exercise/ExerciseList"
 import { TagFilter } from "@/components/exercise/TagFilter"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useDeactivateExercise, useExercises, useExerciseTags, useReactivateExercise } from "@/hooks/useExercises"
 import { useToast } from "@/hooks/useToast"
 import type { ExerciseSummary } from "@/types/exercise"
@@ -19,22 +20,40 @@ export function ExercisesListPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [page, setPage] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [pendingExerciseId, setPendingExerciseId] = useState<number | null>(null)
+  const [exerciseToDeactivate, setExerciseToDeactivate] = useState<ExerciseSummary | null>(null)
   const tagsQuery = useExerciseTags()
   const exercisesQuery = useExercises({ search, tagIds, active: showInactive ? undefined : true, page, size: 20, sort: "name,asc" })
   const deactivate = useDeactivateExercise()
   const reactivate = useReactivateExercise()
 
   async function toggleActive(exercise: ExerciseSummary) {
+    if (exercise.active) {
+      setExerciseToDeactivate(exercise)
+      return
+    }
+    setPendingExerciseId(exercise.id)
     try {
-      if (exercise.active) {
-        await deactivate.mutateAsync(exercise.id)
-        toast.success("Ejercicio desactivado.")
-      } else {
-        await reactivate.mutateAsync(exercise.id)
-        toast.success("Ejercicio reactivado.")
-      }
+      await reactivate.mutateAsync(exercise.id)
+      toast.success("Ejercicio reactivado.")
     } catch {
       toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingExerciseId(null)
+    }
+  }
+
+  async function confirmDeactivateExercise() {
+    if (!exerciseToDeactivate) return
+    setPendingExerciseId(exerciseToDeactivate.id)
+    try {
+      await deactivate.mutateAsync(exerciseToDeactivate.id)
+      toast.success("Ejercicio desactivado.")
+      setExerciseToDeactivate(null)
+    } catch {
+      toast.error("No pudimos cambiar el estado.")
+    } finally {
+      setPendingExerciseId(null)
     }
   }
 
@@ -81,12 +100,10 @@ export function ExercisesListPage() {
           </div>
 
           {exercisesQuery.isLoading ? (
-            <div className="flex min-h-64 items-center justify-center">
-              <LoadingSpinner />
-            </div>
+            <ExercisesListSkeleton />
           ) : exercisesQuery.data?.content.length ? (
             <>
-              <ExerciseList exercises={exercisesQuery.data.content} onToggleActive={toggleActive} />
+              <ExerciseList exercises={exercisesQuery.data.content} onToggleActive={toggleActive} pendingExerciseId={pendingExerciseId} />
               <Pagination page={exercisesQuery.data.page} totalPages={exercisesQuery.data.totalPages} onPage={setPage} />
             </>
           ) : (
@@ -103,6 +120,48 @@ export function ExercisesListPage() {
           {filters}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(exerciseToDeactivate)}
+        onOpenChange={(open) => {
+          if (!open) setExerciseToDeactivate(null)
+        }}
+        title="Desactivar ejercicio"
+        description="El ejercicio dejará de estar disponible para nuevas rutinas, pero no se elimina el historial existente."
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivando..."
+        isPending={deactivate.isPending}
+        onConfirm={() => {
+          void confirmDeactivateExercise()
+        }}
+      />
+    </div>
+  )
+}
+
+function ExercisesListSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="rounded-md border bg-white p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="h-9 w-9" />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

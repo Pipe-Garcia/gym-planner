@@ -1,4 +1,4 @@
-import { Edit, Eye, RotateCcw, XCircle } from "lucide-react"
+import { Edit, Eye, Loader2, RotateCcw, XCircle } from "lucide-react"
 import { Link } from "react-router-dom"
 import { TagBadge } from "@/components/exercise/TagBadge"
 import { Button } from "@/components/ui/button"
@@ -8,9 +8,10 @@ import type { ExerciseSummary } from "@/types/exercise"
 interface ExerciseCardProps {
   exercise: ExerciseSummary
   onToggleActive: (exercise: ExerciseSummary) => void
+  isTogglePending?: boolean
 }
 
-export function ExerciseCard({ exercise, onToggleActive }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, onToggleActive, isTogglePending }: ExerciseCardProps) {
   return (
     <article className="rounded-md border bg-white p-4">
       <div className="flex items-start justify-between gap-3">
@@ -40,8 +41,8 @@ export function ExerciseCard({ exercise, onToggleActive }: ExerciseCardProps) {
             Editar
           </Link>
         </Button>
-        <Button type="button" variant="ghost" size="icon" onClick={() => onToggleActive(exercise)} aria-label="Cambiar estado">
-          {exercise.active ? <XCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+        <Button type="button" variant="ghost" size="icon" onClick={() => onToggleActive(exercise)} disabled={isTogglePending} aria-label="Cambiar estado">
+          {isTogglePending ? <Loader2 className="h-4 w-4 animate-spin" /> : exercise.active ? <XCircle className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
         </Button>
       </div>
     </article>

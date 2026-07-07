@@ -1,4 +1,4 @@
-import { Calendar, FileStack, Plus } from "lucide-react"
+import { Calendar, FileStack, Loader2, Plus } from "lucide-react"
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { BackButton } from "@/components/shared/BackButton"
@@ -42,7 +42,7 @@ export function NewRoutineWizardPage() {
       {mode === "choose" ? (
         <div className="grid gap-4 md:grid-cols-2">
           <Card><CardContent className="space-y-3 p-6"><FileStack className="h-8 w-8" /><h2 className="font-semibold">Desde plantilla</h2><p className="text-sm text-muted-foreground">Copia profunda de días, bloques, ejercicios y sets.</p><Button type="button" onClick={() => setMode("template")}>Elegir plantilla</Button></CardContent></Card>
-          <Card><CardContent className="space-y-3 p-6"><Plus className="h-8 w-8" /><h2 className="font-semibold">Desde cero</h2><p className="text-sm text-muted-foreground">Crea un borrador editable sin afectar la rutina activa.</p><Button type="button" variant="outline" onClick={createBlank}>Crear borrador</Button></CardContent></Card>
+          <Card><CardContent className="space-y-3 p-6"><Plus className="h-8 w-8" /><h2 className="font-semibold">Desde cero</h2><p className="text-sm text-muted-foreground">Crea un borrador editable sin afectar la rutina activa.</p><Button type="button" variant="outline" disabled={fromScratch.isPending} onClick={createBlank}>{fromScratch.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{fromScratch.isPending ? "Creando..." : "Crear borrador"}</Button></CardContent></Card>
         </div>
       ) : null}
       {mode === "template" ? (
@@ -60,7 +60,10 @@ export function NewRoutineWizardPage() {
               </button>
             ))}
           </div>
-          <Button type="button" disabled={!selectedTemplateId} onClick={createFromSelected}>Crear y editar</Button>
+          <Button type="button" disabled={!selectedTemplateId || fromTemplate.isPending} onClick={createFromSelected}>
+            {fromTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {fromTemplate.isPending ? "Creando..." : "Crear y editar"}
+          </Button>
         </div>
       ) : null}
     </div>
