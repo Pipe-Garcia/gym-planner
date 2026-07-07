@@ -3,12 +3,12 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { StudentFilters } from "@/components/student/StudentFilters"
 import { StudentList } from "@/components/student/StudentList"
 import { StudentSearchBar } from "@/components/student/StudentSearchBar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useDeactivateStudent, useReactivateStudent, useStudents } from "@/hooks/useStudents"
 import { useToast } from "@/hooks/useToast"
 import type { StudentSummary } from "@/types/student"
@@ -124,9 +124,7 @@ export function StudentsListPage() {
           )}
 
           {studentsQuery.isLoading ? (
-            <div className="flex min-h-64 items-center justify-center">
-              <LoadingSpinner />
-            </div>
+            <StudentsListSkeleton />
           ) : studentsQuery.data?.content.length ? (
             <>
               <StudentList students={studentsQuery.data.content} onToggleActive={toggleActive} pendingStudentId={pendingStudentId} />
@@ -160,6 +158,70 @@ export function StudentsListPage() {
           void confirmDeactivateStudent()
         }}
       />
+    </div>
+  )
+}
+
+function StudentsListSkeleton() {
+  return (
+    <div>
+      <div className="hidden overflow-x-auto rounded-md border bg-white md:block">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/70 text-left">
+            <tr>
+              <th className="px-4 py-3 font-medium">Apellido y nombre</th>
+              <th className="px-4 py-3 font-medium">DNI</th>
+              <th className="px-4 py-3 font-medium">Teléfono</th>
+              <th className="px-4 py-3 font-medium">Deporte</th>
+              <th className="px-4 py-3 font-medium">Nivel</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 text-right font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <tr key={index} className="border-t">
+                <td className="px-4 py-3"><Skeleton className="h-4 w-40" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-6 w-16 rounded-full" /></td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-9" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-md border bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 w-9" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

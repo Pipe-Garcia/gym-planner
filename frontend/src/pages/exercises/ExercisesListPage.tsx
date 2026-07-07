@@ -3,12 +3,12 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { ExerciseList } from "@/components/exercise/ExerciseList"
 import { TagFilter } from "@/components/exercise/TagFilter"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useDeactivateExercise, useExercises, useExerciseTags, useReactivateExercise } from "@/hooks/useExercises"
 import { useToast } from "@/hooks/useToast"
 import type { ExerciseSummary } from "@/types/exercise"
@@ -100,9 +100,7 @@ export function ExercisesListPage() {
           </div>
 
           {exercisesQuery.isLoading ? (
-            <div className="flex min-h-64 items-center justify-center">
-              <LoadingSpinner />
-            </div>
+            <ExercisesListSkeleton />
           ) : exercisesQuery.data?.content.length ? (
             <>
               <ExerciseList exercises={exercisesQuery.data.content} onToggleActive={toggleActive} pendingExerciseId={pendingExerciseId} />
@@ -136,6 +134,34 @@ export function ExercisesListPage() {
           void confirmDeactivateExercise()
         }}
       />
+    </div>
+  )
+}
+
+function ExercisesListSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="rounded-md border bg-white p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="h-9 w-9" />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

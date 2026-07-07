@@ -5,7 +5,6 @@ import { DuplicateRoutineDialog } from "@/components/routine/DuplicateRoutineDia
 import { RoutineActionsBar } from "@/components/routine/RoutineActionsBar"
 import { BackButton } from "@/components/shared/BackButton"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { StudentExerciseHistorySection } from "@/components/student/history/StudentExerciseHistorySection"
 import { StudentHistoryEmptyState } from "@/components/student/history/StudentHistoryEmptyState"
 import { StudentHistorySummary } from "@/components/student/history/StudentHistorySummary"
@@ -16,6 +15,7 @@ import { NoteForm } from "@/components/student/NoteForm"
 import { NoteList } from "@/components/student/NoteList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useRoutine, useStudentRoutines } from "@/hooks/useRoutines"
 import { useStudentHistorySummary } from "@/hooks/useStudentHistory"
 import {
@@ -64,11 +64,7 @@ export function StudentDetailPage() {
   const isTogglePending = deactivate.isPending || reactivate.isPending
 
   if (studentQuery.isLoading) {
-    return (
-      <div className="flex min-h-80 items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    )
+    return <StudentDetailSkeleton />
   }
 
   const student = studentQuery.data
@@ -267,6 +263,42 @@ export function StudentDetailPage() {
           void confirmDeleteNote()
         }}
       />
+    </div>
+  )
+}
+
+function StudentDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-9 w-24" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+      </div>
+      <div className="flex min-w-max gap-2 border-b">
+        {tabs.map((item) => (
+          <Skeleton key={item} className="my-3 h-4 w-20" />
+        ))}
+      </div>
+      <Card>
+        <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className={index === 7 ? "space-y-2 sm:col-span-2" : "space-y-2"}>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }

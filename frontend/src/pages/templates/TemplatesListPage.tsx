@@ -5,6 +5,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { TemplateList } from "@/components/template/TemplateList"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useDeactivateTemplate, useDuplicateTemplate, useReactivateTemplate, useTemplates } from "@/hooks/useTemplates"
 import { useToast } from "@/hooks/useToast"
 import type { TemplateSummary } from "@/types/training"
@@ -72,7 +73,13 @@ export function TemplatesListPage() {
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre" />
         <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />Mostrar inactivas</label>
       </div>
-      {query.data?.content.length ? <TemplateList templates={query.data.content} onDuplicate={onDuplicate} onDeactivate={onDeactivate} onReactivate={onReactivate} pendingAction={pendingAction} /> : <div className="rounded-md border bg-white p-8 text-center text-sm text-muted-foreground"><FileStack className="mx-auto mb-2 h-8 w-8" />No hay plantillas.</div>}
+      {query.isLoading ? (
+        <TemplatesListSkeleton />
+      ) : query.data?.content.length ? (
+        <TemplateList templates={query.data.content} onDuplicate={onDuplicate} onDeactivate={onDeactivate} onReactivate={onReactivate} pendingAction={pendingAction} />
+      ) : (
+        <div className="rounded-md border bg-white p-8 text-center text-sm text-muted-foreground"><FileStack className="mx-auto mb-2 h-8 w-8" />No hay plantillas.</div>
+      )}
       <ConfirmDialog
         open={Boolean(templateToDeactivate)}
         onOpenChange={(open) => {
@@ -87,6 +94,33 @@ export function TemplatesListPage() {
           void confirmDeactivateTemplate()
         }}
       />
+    </div>
+  )
+}
+
+function TemplatesListSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="rounded-md border bg-white p-4">
+          <div className="flex items-start justify-between gap-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-2/3" />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-28" />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
