@@ -200,11 +200,7 @@ public class RoutineService {
 
     @Transactional(readOnly = true)
     public Routine getFull(Long gymId, Long id) {
-        Routine routine = routineRepository.findByIdWithFullStructure(id).orElseThrow(() -> new NotFoundException("Routine not found."));
-        if (!routine.getStudent().getGym().getId().equals(gymId)) {
-            throw new NotFoundException("Routine not found.");
-        }
-        return routine;
+        return routineRepository.findByIdWithFullStructure(id, gymId).orElseThrow(() -> new NotFoundException("Routine not found."));
     }
 
     void finishPreviousActive(Long gymId, Long studentId) {
