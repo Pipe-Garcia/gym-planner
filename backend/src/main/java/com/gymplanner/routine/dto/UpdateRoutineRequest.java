@@ -7,4 +7,4 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 
-public record UpdateRoutineRequest(@NotBlank @Size(max = 150) String name, @Size(max = 150) String objective, RoutineStatus status, LocalDate assignedDate, LocalDate finishedDate, String generalNotes, String internalNotes, @Valid List<RoutineDayInput> days) {}
+public record UpdateRoutineRequest(@NotBlank @Size(max = 150) String name, @Size(max = 150) String objective, RoutineStatus status, LocalDate assignedDate, String generalNotes, String internalNotes, @Valid List<RoutineDayInput> days) {}

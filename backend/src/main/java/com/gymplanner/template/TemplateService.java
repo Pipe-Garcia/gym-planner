@@ -103,12 +103,8 @@ public class TemplateService {
 
     @Transactional(readOnly = true)
     public TrainingTemplate getFull(Long gymId, Long id) {
-        TrainingTemplate template = templateRepository.findByIdWithFullStructure(id)
+        return templateRepository.findByIdWithFullStructure(id, gymId)
                 .orElseThrow(() -> new NotFoundException("Template not found."));
-        if (!template.getGym().getId().equals(gymId)) {
-            throw new NotFoundException("Template not found.");
-        }
-        return template;
     }
 
     @Transactional(readOnly = true)

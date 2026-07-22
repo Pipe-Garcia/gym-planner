@@ -124,12 +124,13 @@ public class RoutineService {
         if (routine.getStatus() == RoutineStatus.FINISHED || routine.getStatus() == RoutineStatus.ARCHIVED) {
             throw new BusinessRuleException("No se puede editar una rutina finalizada o archivada. Duplicala o crea una nueva.");
         }
-        RoutineStatus newStatus = request.status() == null ? routine.getStatus() : request.status();
+        RoutineStatus currentStatus = routine.getStatus();
+        RoutineStatus requestedStatus = request.status();
+        RoutineStatus newStatus = resolveUpdateStatus(currentStatus, requestedStatus);
         routine.setName(request.name().trim());
         routine.setObjective(clean(request.objective()));
         routine.setStatus(newStatus);
         routine.setAssignedDate(request.assignedDate() == null ? routine.getAssignedDate() : request.assignedDate());
-        routine.setFinishedDate(request.finishedDate());
         routine.setGeneralNotes(clean(request.generalNotes()));
         routine.setInternalNotes(clean(request.internalNotes()));
         routine.getDays().clear();
@@ -140,6 +141,16 @@ public class RoutineService {
         }
         validator.validate(routine);
         return mapper.toResponse(routineRepository.save(routine));
+    }
+
+    private RoutineStatus resolveUpdateStatus(RoutineStatus currentStatus, RoutineStatus requestedStatus) {
+        if (requestedStatus == null || requestedStatus == currentStatus) {
+            return currentStatus;
+        }
+        if (currentStatus == RoutineStatus.DRAFT && requestedStatus == RoutineStatus.ACTIVE) {
+            return RoutineStatus.ACTIVE;
+        }
+        throw new BusinessRuleException("No se puede cambiar el estado de la rutina desde este endpoint. Usá las acciones de finalizar, archivar o activar según corresponda.");
     }
 
     @Transactional
@@ -200,11 +211,7 @@ public class RoutineService {
 
     @Transactional(readOnly = true)
     public Routine getFull(Long gymId, Long id) {
-        Routine routine = routineRepository.findByIdWithFullStructure(id).orElseThrow(() -> new NotFoundException("Routine not found."));
-        if (!routine.getStudent().getGym().getId().equals(gymId)) {
-            throw new NotFoundException("Routine not found.");
-        }
-        return routine;
+        return routineRepository.findByIdWithFullStructure(id, gymId).orElseThrow(() -> new NotFoundException("Routine not found."));
     }
 
     void finishPreviousActive(Long gymId, Long studentId) {

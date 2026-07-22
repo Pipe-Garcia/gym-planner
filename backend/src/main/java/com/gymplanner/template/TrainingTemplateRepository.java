@@ -17,9 +17,9 @@ public interface TrainingTemplateRepository extends JpaRepository<TrainingTempla
             LEFT JOIN FETCH e.sets s
             LEFT JOIN FETCH e.exercise ex
             LEFT JOIN FETCH ex.tags tags
-            WHERE t.id = :id
+            WHERE t.id = :id AND t.gym.id = :gymId
             """)
-    Optional<TrainingTemplate> findByIdWithFullStructure(@Param("id") Long id);
+    Optional<TrainingTemplate> findByIdWithFullStructure(@Param("id") Long id, @Param("gymId") Long gymId);
 
     @Query("SELECT COUNT(d) FROM TemplateDay d WHERE d.template.id = :templateId")
     long countDays(@Param("templateId") Long templateId);
