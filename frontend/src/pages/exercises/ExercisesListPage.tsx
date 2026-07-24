@@ -23,7 +23,7 @@ export function ExercisesListPage() {
   const [pendingExerciseId, setPendingExerciseId] = useState<number | null>(null)
   const [exerciseToDeactivate, setExerciseToDeactivate] = useState<ExerciseSummary | null>(null)
   const tagsQuery = useExerciseTags()
-  const exercisesQuery = useExercises({ search, tagIds, active: showInactive ? undefined : true, page, size: 20, sort: "name,asc" })
+  const exercisesQuery = useExercises({ search, tagIds, active: showInactive ? false : true, page, size: 20, sort: "name,asc" })
   const deactivate = useDeactivateExercise()
   const reactivate = useReactivateExercise()
 
