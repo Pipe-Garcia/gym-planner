@@ -10,10 +10,12 @@ import com.gymplanner.exercise.tag.TagType;
 import com.gymplanner.routine.RoutineService;
 import com.gymplanner.routine.RoutineStatus;
 import com.gymplanner.routine.dto.CreateRoutineFromScratchRequest;
+import com.gymplanner.routine.dto.FinishRoutineRequest;
 import com.gymplanner.routine.dto.RoutineBlockInput;
 import com.gymplanner.routine.dto.RoutineDayInput;
 import com.gymplanner.routine.dto.RoutineExerciseInput;
 import com.gymplanner.routine.dto.RoutineExerciseSetInput;
+import com.gymplanner.routine.dto.RoutineResponse;
 import com.gymplanner.shared.blocks.BlockPurpose;
 import com.gymplanner.shared.blocks.BlockStructuralType;
 import com.gymplanner.shared.blocks.SetKind;
@@ -57,6 +59,20 @@ class WhatsAppTextServiceTest {
         String text = whatsAppTextService.generateText(fixture.routineId(), 1L);
 
         assertThat(text).doesNotContain("Lesion en rodilla derecha");
+    }
+
+    @Test
+    void text_doesNotContain_closureNotes() {
+        String sentinel = "CLOSURE_SENTINEL_b7d4e1";
+        Fixture fixture = fixture();
+
+        routineService.finishRoutine(1L, 1L, fixture.routineId(), new FinishRoutineRequest(sentinel));
+        RoutineResponse persisted = routineService.get(1L, fixture.routineId());
+        assertThat(persisted.closureNotes()).isEqualTo(sentinel);
+
+        String text = whatsAppTextService.generateText(fixture.routineId(), 1L);
+
+        assertThat(text).doesNotContain(sentinel);
     }
 
     @Test
