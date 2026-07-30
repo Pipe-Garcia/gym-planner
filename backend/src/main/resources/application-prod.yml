@@ -1,3 +1,10 @@
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+
 spring:
   datasource:
     url: ${DB_URL}
@@ -15,6 +22,9 @@ cors:
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.orm.jdbc.extract: WARN
 
 springdoc:
   api-docs:
