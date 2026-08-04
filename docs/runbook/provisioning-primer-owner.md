@@ -59,3 +59,28 @@ Antes de provisionar un segundo cliente se necesita un mecanismo programático,
 repetible y auditable que cree Gym + OWNER y copie los tags default. También
 debe decidirse explícitamente si los tags serán globales o pertenecerán a cada
 tenant. Esa evolución queda fuera de F3-1.
+
+
+## Notas prácticas (aprendidas del ensayo en local)
+
+- **El reclamo de la cuenta se hace con un cliente gráfico (DBeaver), NO con
+  psql en Git Bash.** En Windows, el psql nativo + Git Bash ignora los
+  argumentos de línea de comandos (`-c` y `-f`), lo que hace inviable ejecutar
+  scripts SQL desde esa terminal. DBeaver conectado a la base (local o Neon en
+  producción) evita el problema y además permite ver la fila antes y después
+  del cambio.
+
+- **Dry-run obligatorio antes del UPDATE:** ejecutar primero un SELECT con el
+  mismo WHERE para confirmar visualmente qué fila se va a tocar. Recién después,
+  el UPDATE. DBeaver pide confirmación mostrando cuántas filas se modificarán:
+  debe decir exactamente 1.
+
+- **Generación del hash:** se usó un test JUnit temporal (BCryptPasswordEncoder
+  cost 12, password recibida por variable de entorno, no hardcodeada). El
+  archivo del generador se BORRA después de usarlo y nunca se commitea. La
+  password en texto plano no queda en ningún archivo del repo.
+
+- En producción, además, la password del OWNER real la elige el cliente y NO se
+  pega en ningún canal (chat, archivo, historial de terminal). Para el hash en
+  producción, usar input oculto para que el texto plano no quede ni en el
+  historial de la terminal.
