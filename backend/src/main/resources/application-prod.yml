@@ -1,4 +1,5 @@
 server:
+  forward-headers-strategy: framework
   error:
     include-message: never
     include-stacktrace: never

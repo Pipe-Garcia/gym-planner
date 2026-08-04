@@ -3,6 +3,8 @@ package com.gymplanner.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,7 +83,12 @@ class AuthServiceTest {
         when(userRepository.findByEmailIgnoreCase("missing@gymplanner.local")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("missing@gymplanner.local", "test-password")))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Invalid email or password.");
+
+        verify(passwordEncoder).matches(
+                eq("test-password"),
+                argThat(hash -> hash != null && hash.matches("\\$2[aby]\\$12\\$.{53}")));
     }
 
     private User buildUser(boolean active) {
