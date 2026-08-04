@@ -18,7 +18,7 @@ export function LoginPage() {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "admin@gymplanner.local",
+      email: "",
       password: "",
     },
   })

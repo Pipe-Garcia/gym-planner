@@ -221,7 +221,7 @@ class StudentControllerTest {
     }
 
     private GymPrincipal principal(Long gymId) {
-        return new GymPrincipal(1L, "admin@gymplanner.local", "password", "Owner Demo", UserRole.OWNER, gymId, true);
+        return new GymPrincipal(1L, "owner@test.local", "password", "Test Owner", UserRole.OWNER, gymId, true);
     }
 
     private Long createOtherGym(String name) {
