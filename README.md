@@ -64,12 +64,12 @@ npm run dev
 
 El frontend queda disponible en `http://localhost:5173` y el backend en `http://localhost:8080`.
 
-## Credenciales Demo
+## Provisioning del primer OWNER
 
-- Email: `admin@gymplanner.local`
-- Password: `admin123`
-
-Estas credenciales son solo para desarrollo. Cambialas antes de usar el sistema en produccion.
+Una instalacion nueva no incluye credenciales utilizables. El primer OWNER se
+provisiona manualmente siguiendo el
+[runbook de provisioning](docs/runbook/provisioning-primer-owner.md).
+No cargues datos reales antes de completar y verificar ese procedimiento.
 
 ## Variables de Entorno
 
@@ -128,7 +128,7 @@ Ejemplo login:
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@gymplanner.local","password":"admin123"}'
+  -d '{"email":"OWNER_EMAIL","password":"OWNER_PASSWORD"}'
 ```
 
 ## Proximos Modulos

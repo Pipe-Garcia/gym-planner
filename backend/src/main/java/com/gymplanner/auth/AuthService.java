@@ -16,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final String INVALID_CREDENTIALS_MESSAGE = "Invalid email or password.";
+    private static final String DUMMY_PASSWORD_HASH =
+            "$2a$12$lr2GVLfVk4BgcjlRzEh0zu9E1TP7N7XKuYE1DpYZ8cPqEdtqIip5a";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -23,14 +27,17 @@ public class AuthService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmailIgnoreCase(request.email())
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password."));
+                .orElseGet(() -> {
+                    passwordEncoder.matches(request.password(), DUMMY_PASSWORD_HASH);
+                    throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+                });
 
         if (!user.isActive()) {
-            throw new UnauthorizedException("Invalid email or password.");
+            throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Invalid email or password.");
+            throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
         }
 
         user.setLastLoginAt(Instant.now());

@@ -35,31 +35,31 @@ class AuthControllerTest {
 
     @Test
     void loginWithValidCredentialsReturnsTokenAndUser() throws Exception {
-        LoginRequest request = new LoginRequest("admin@gymplanner.local", "admin123");
+        LoginRequest request = new LoginRequest("owner@test.local", "test-password");
         when(authService.login(request)).thenReturn(new LoginResponse(
                 "jwt-token",
-                new AuthenticatedUserResponse(1L, "admin@gymplanner.local", "Owner Demo", UserRole.OWNER, 1L)));
+                new AuthenticatedUserResponse(1L, "owner@test.local", "Test Owner", UserRole.OWNER, 1L)));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"admin@gymplanner.local","password":"admin123"}
+                                {"email":"owner@test.local","password":"test-password"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-token"))
-                .andExpect(jsonPath("$.user.email").value("admin@gymplanner.local"))
+                .andExpect(jsonPath("$.user.email").value("owner@test.local"))
                 .andExpect(jsonPath("$.user.gymId").value(1));
     }
 
     @Test
     void loginWithInvalidCredentialsReturnsUnauthorized() throws Exception {
-        LoginRequest request = new LoginRequest("admin@gymplanner.local", "bad");
+        LoginRequest request = new LoginRequest("owner@test.local", "bad");
         when(authService.login(request)).thenThrow(new UnauthorizedException("Invalid email or password."));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"admin@gymplanner.local","password":"bad"}
+                                {"email":"owner@test.local","password":"bad"}
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401));
@@ -70,7 +70,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"invalid","password":"admin123"}
+                                {"email":"invalid","password":"test-password"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))

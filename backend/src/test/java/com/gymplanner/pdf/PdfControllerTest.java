@@ -133,6 +133,6 @@ class PdfControllerTest {
     }
 
     private GymPrincipal principal() {
-        return new GymPrincipal(1L, "admin@gymplanner.local", "password", "Owner Demo", UserRole.OWNER, 1L, true);
+        return new GymPrincipal(1L, "owner@test.local", "password", "Test Owner", UserRole.OWNER, 1L, true);
     }
 }

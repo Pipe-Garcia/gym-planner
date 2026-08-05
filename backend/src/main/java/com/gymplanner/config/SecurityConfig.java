@@ -1,7 +1,10 @@
 package com.gymplanner.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gymplanner.auth.ClientIpExtractor;
 import com.gymplanner.auth.JwtAuthenticationFilter;
+import com.gymplanner.auth.LoginRateLimitFilter;
+import com.gymplanner.auth.LoginRateLimiter;
 import com.gymplanner.shared.exception.ApiError;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Instant;
@@ -32,11 +35,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ClientIpExtractor clientIpExtractor;
+    private final LoginRateLimiter loginRateLimiter;
     private final UserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        LoginRateLimitFilter loginRateLimitFilter =
+                new LoginRateLimitFilter(clientIpExtractor, loginRateLimiter, objectMapper);
+
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
@@ -54,6 +62,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(loginRateLimitFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 
