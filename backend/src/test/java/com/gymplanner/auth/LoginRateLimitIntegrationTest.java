@@ -34,7 +34,6 @@ class LoginRateLimitIntegrationTest {
 
     private static final String TEST_EMAIL = "owner@test.local";
     private static final String TEST_PASSWORD = "integration-test-password";
-    private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 
     @Autowired
     private MockMvc mockMvc;
@@ -99,12 +98,11 @@ class LoginRateLimitIntegrationTest {
     @Test
     void nonLoginEndpointIsNotRateLimited() throws Exception {
         for (int attempt = 0; attempt < LoginRateLimiter.CAPACITY + 1; attempt++) {
-            /*
-             * The test profile has no trusted proxy. Supplying this header directly
-             * is only a MockMvc simulation of the value Render prepends in production.
-             */
             mockMvc.perform(get("/api/public/ping")
-                            .header(X_FORWARDED_FOR, "203.0.113.14"))
+                            .with(request -> {
+                                request.setRemoteAddr("203.0.113.14");
+                                return request;
+                            }))
                     .andExpect(status().isOk());
         }
     }
@@ -139,7 +137,11 @@ class LoginRateLimitIntegrationTest {
             String email,
             String password) throws Exception {
         return mockMvc.perform(post(LoginRateLimitFilter.LOGIN_PATH)
-                .header(X_FORWARDED_FOR, clientIp)
+                .with(request -> {
+                    // Local/test deliberately uses the servlet remote address: no trusted proxy exists here.
+                    request.setRemoteAddr(clientIp);
+                    return request;
+                })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsBytes(new LoginRequest(email, password))));
     }
