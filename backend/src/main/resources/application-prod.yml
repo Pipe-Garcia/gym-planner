@@ -6,6 +6,10 @@ server:
     include-binding-errors: never
     include-exception: false
 
+gymplanner:
+  security:
+    client-ip-source: cloudflare
+
 spring:
   datasource:
     url: ${DB_URL}
