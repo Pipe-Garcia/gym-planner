@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymplanner.auth.ClientIpExtractor;
 import com.gymplanner.auth.JwtAuthenticationFilter;
 import com.gymplanner.auth.LoginRateLimitFilter;
+import com.gymplanner.auth.LoginRateLimitDiagnostics;
 import com.gymplanner.auth.LoginRateLimiter;
 import com.gymplanner.shared.exception.ApiError;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,13 +38,18 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ClientIpExtractor clientIpExtractor;
     private final LoginRateLimiter loginRateLimiter;
+    private final LoginRateLimitDiagnostics loginRateLimitDiagnostics;
     private final UserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         LoginRateLimitFilter loginRateLimitFilter =
-                new LoginRateLimitFilter(clientIpExtractor, loginRateLimiter, objectMapper);
+                new LoginRateLimitFilter(
+                        clientIpExtractor,
+                        loginRateLimiter,
+                        loginRateLimitDiagnostics,
+                        objectMapper);
 
         return http
                 .csrf(csrf -> csrf.disable())
