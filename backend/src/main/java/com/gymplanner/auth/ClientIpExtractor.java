@@ -41,6 +41,19 @@ public class ClientIpExtractor {
         return isIpLiteral(candidate) ? candidate : UNKNOWN_CLIENT;
     }
 
+    DiagnosticContext diagnosticContext(HttpServletRequest request, String finalKey) {
+        String cloudflareAddress = request.getHeader(CF_CONNECTING_IP);
+        boolean cloudflarePresent = cloudflareAddress != null;
+        boolean cloudflareValid = StringUtils.hasText(cloudflareAddress)
+                && isIpLiteral(cloudflareAddress.trim());
+        return new DiagnosticContext(
+                source.propertyValue,
+                cloudflarePresent,
+                cloudflareValid,
+                request.getHeader("X-Forwarded-For") != null,
+                UNKNOWN_CLIENT.equals(finalKey));
+    }
+
     private boolean isIpLiteral(String candidate) {
         if (candidate.indexOf(',') >= 0 || candidate.indexOf('%') >= 0) {
             return false;
@@ -93,9 +106,22 @@ public class ClientIpExtractor {
         }
     }
 
+    record DiagnosticContext(
+            String source,
+            boolean cfPresent,
+            boolean cfValid,
+            boolean xffPresent,
+            boolean unknownClient) {}
+
     private enum ClientIpSource {
-        CLOUDFLARE,
-        REMOTE_ADDRESS;
+        CLOUDFLARE("cloudflare"),
+        REMOTE_ADDRESS("remote-address");
+
+        private final String propertyValue;
+
+        ClientIpSource(String propertyValue) {
+            this.propertyValue = propertyValue;
+        }
 
         private static ClientIpSource from(String configuredSource) {
             try {
