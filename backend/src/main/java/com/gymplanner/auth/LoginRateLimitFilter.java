@@ -26,7 +26,6 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private final ClientIpExtractor clientIpExtractor;
     private final LoginRateLimiter loginRateLimiter;
-    private final LoginRateLimitDiagnostics diagnostics;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -35,9 +34,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
         try {
-            String clientKey = clientIpExtractor.extract(request);
-            LoginRateLimiter.Decision decision = loginRateLimiter.tryAcquire(clientKey);
-            logDiagnostics(request, clientKey, decision);
+            LoginRateLimiter.Decision decision =
+                    loginRateLimiter.tryAcquire(clientIpExtractor.extract(request));
             if (!decision.allowed()) {
                 writeRateLimitError(request, response, decision.retryAfterSeconds());
                 return;
@@ -47,33 +45,6 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private void logDiagnostics(
-            HttpServletRequest request,
-            String clientKey,
-            LoginRateLimiter.Decision decision) {
-        if (!diagnostics.isEnabled()) {
-            return;
-        }
-
-        try {
-            ClientIpExtractor.DiagnosticContext context =
-                    clientIpExtractor.diagnosticContext(request, clientKey);
-            log.info(
-                    "LOGIN_RL_DIAG source={} cfPresent={} cfValid={} xffPresent={} unknownClient={} keyHash={} allowed={} retryAfterSeconds={}",
-                    context.source(),
-                    context.cfPresent(),
-                    context.cfValid(),
-                    context.xffPresent(),
-                    context.unknownClient(),
-                    diagnostics.fingerprint(clientKey),
-                    decision.allowed(),
-                    decision.retryAfterSeconds());
-        } catch (RuntimeException exception) {
-            // Temporary diagnostics must never change the rate-limit decision.
-            log.warn("LOGIN_RL_DIAG unavailable reason={}", exception.getClass().getSimpleName());
-        }
     }
 
     @Override
