@@ -70,6 +70,16 @@ Nota de implementación: durante F3-3 el matching de ruta del filtro usaba `getS
 
 Suite completa en verde: 344 tests.
 
+### Addendum F3-3.1 — IP no falsificable y cache acotada
+
+**Hallazgo post-cierre:** la validación runtime contra Render demostró que el rate limiting por IP todavía era evadible mediante un `X-Forwarded-For` falsificado. En prod, `server.forward-headers-strategy: framework` hacía que Spring procesara XFF antes del filtro de seguridad, por lo que `getRemoteAddr()` podía quedar derivado del primer valor de XFF, manipulable por el cliente.
+
+**Fix:** en prod, `ClientIpExtractor` usa `CF-Connecting-IP` como única fuente de IP, ignora `X-Forwarded-For` y no usa `getRemoteAddr()`. Si el header de Cloudflare está ausente o no contiene un único IPv4/IPv6 válido, usa la clave estable compartida `unknown-client`. En local/test usa `getRemoteAddr()`. Además, el `ConcurrentHashMap` ilimitado de buckets fue reemplazado por Caffeine con `maximumSize=10_000` y `expireAfterAccess=15m`.
+
+**Validación runtime:** falsificar manualmente `CF-Connecting-IP` fue bloqueado por Cloudflare con 403; una saturación concurrente produjo 5×401 y los intentos restantes 429; después de saturar el bucket, tres requests con XFF falsos devolvieron 429/429/429. La instrumentación temporal confirmó `source=cloudflare`, `cfPresent=true`, `cfValid=true`, `xffPresent=false` y la misma `keyHash` para requests normales y con XFF falsificado. Esa instrumentación se removió después del diagnóstico.
+
+**Estado final:** F3-3.1 **cerrado**. El rate limiting del login quedó validado contra la infraestructura real Cloudflare → Render, no solo mediante tests automatizados.
+
 ## Decisiones de diseño registradas
 
 - **Rate limiting por IP, no por email; sin account lockout.** Bloquear por email o cuenta permitiría a un atacante hacer denial-of-service contra el único OWNER fallando a propósito. Rate limiting por IP es la mitigación correcta para un sistema de OWNER único.
