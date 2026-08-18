@@ -21,7 +21,7 @@ export function TemplatesListPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [pendingAction, setPendingAction] = useState<PendingTemplateAction>(null)
   const [templateToDeactivate, setTemplateToDeactivate] = useState<TemplateSummary | null>(null)
-  const query = useTemplates({ search: search || undefined, active: showInactive ? undefined : true, page: 0, size: 30, sort: "name,asc" })
+  const query = useTemplates({ search: search || undefined, active: showInactive ? false : true, page: 0, size: 30, sort: "name,asc" })
   const duplicate = useDuplicateTemplate()
   const deactivate = useDeactivateTemplate()
   const reactivate = useReactivateTemplate()
