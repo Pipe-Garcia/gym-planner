@@ -104,13 +104,20 @@ export function ExerciseInBlockRow({ blockPath, exerciseIndex, exercisesLength, 
 export function CompactTargetExerciseRow({ prefix, measurement, context, disabled }: { prefix: string; measurement: MeasurementType; context: "template" | "routine"; disabled?: boolean }) {
   const { register, setValue, getValues } = useFormContext()
   const setPath = `${prefix}.sets.0`
+  const existingSets = getValues(`${prefix}.sets`)
 
   useEffect(() => {
+    if (disabled) return
     const sets = getValues(`${prefix}.sets`)
     if (!Array.isArray(sets) || sets.length === 0) {
       setValue(`${prefix}.sets`, [emptySet(1)], { shouldDirty: true })
     }
-  }, [getValues, prefix, setValue])
+  }, [disabled, getValues, prefix, setValue])
+
+  // Registering sets.0.* itself creates a partial array entry in RHF.
+  if (disabled && (!Array.isArray(existingSets) || existingSets.length === 0)) {
+    return <p className="text-sm text-muted-foreground">Sin series cargadas.</p>
+  }
 
   if (measurement === "TIME") {
     return (

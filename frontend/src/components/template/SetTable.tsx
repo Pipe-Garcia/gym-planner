@@ -1,30 +1,11 @@
-import { useMemo, useState } from "react"
-import { useFieldArray, useFormContext } from "react-hook-form"
+import { useEffect, useState } from "react"
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
 import { AdvancedSetEditor } from "@/components/template/AdvancedSetEditor"
 import { SimpleSetForm } from "@/components/template/SimpleSetForm"
+import { isSimpleRepresentable } from "@/components/template/simpleSetRepresentability"
 import type { SetFormValue } from "@/schemas/template.schema"
 import { cn } from "@/lib/utils"
 import type { MeasurementType } from "@/types/exercise"
-
-function normalizedCue(value: string | null | undefined): string | null {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
-}
-
-function allSetsAreEqual(sets: SetFormValue[]): boolean {
-  if (sets.length <= 1) return true
-  const [first, ...rest] = sets
-  return rest.every(
-    (set) =>
-      set.targetReps === first.targetReps &&
-      set.targetWeightKg === first.targetWeightKg &&
-      set.restAfterSeconds === first.restAfterSeconds &&
-      set.targetTimeSeconds === first.targetTimeSeconds &&
-      set.targetDistanceMeters === first.targetDistanceMeters &&
-      normalizedCue(set.executionCue) === normalizedCue(first.executionCue) &&
-      (set.setKind ?? "NORMAL") === "NORMAL",
-  )
-}
 
 interface SetTableProps {
   name: string
@@ -37,39 +18,45 @@ export function SetTable({ name, measurement, context, disabled }: SetTableProps
   const { control, getValues } = useFormContext()
   const setsField = useFieldArray({ control, name })
 
-  // CRITICAL: read once at mount. Subscribing with watch here makes set inputs
-  // re-render on every keystroke and can desync React Hook Form state.
-  const initialMode = useMemo<"simple" | "advanced">(() => {
-    const initial = (getValues(name) ?? []) as SetFormValue[]
-    return allSetsAreEqual(initial) ? "simple" : "advanced"
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const [mode, setMode] = useState<"simple" | "advanced">(initialMode)
+  const simpleAllowed = useWatch({
+    control,
+    name,
+    compute: (sets) => isSimpleRepresentable((sets ?? []) as SetFormValue[], measurement, context),
+  })
+  const [mode, setMode] = useState<"simple" | "advanced">(() =>
+    isSimpleRepresentable((getValues(name) ?? []) as SetFormValue[], measurement, context) ? "simple" : "advanced",
+  )
+  useEffect(() => {
+    if (!simpleAllowed && mode === "simple") setMode("advanced")
+  }, [simpleAllowed, mode])
+  const activeMode = mode === "simple" && simpleAllowed ? "simple" : "advanced"
 
   return (
     <div className="space-y-3">
       <div className="inline-flex rounded-md border bg-white p-1">
         <button
           type="button"
-          className={cn("rounded px-3 py-1.5 text-sm", mode === "simple" && "bg-primary text-primary-foreground")}
+          disabled={disabled || !simpleAllowed}
+          className={cn("rounded px-3 py-1.5 text-sm", activeMode === "simple" && "bg-primary text-primary-foreground")}
           onClick={() => setMode("simple")}
         >
           Simple
         </button>
         <button
           type="button"
-          className={cn("rounded px-3 py-1.5 text-sm", mode === "advanced" && "bg-primary text-primary-foreground")}
+          disabled={disabled}
+          className={cn("rounded px-3 py-1.5 text-sm", activeMode === "advanced" && "bg-primary text-primary-foreground")}
           onClick={() => setMode("advanced")}
         >
           Avanzado
         </button>
       </div>
 
-      <div className={mode === "simple" ? "" : "hidden"}>
-        <SimpleSetForm setsField={setsField} sets={getValues(name) as SetFormValue[] | undefined} measurement={measurement} context={context} disabled={disabled} active={mode === "simple"} />
+      {!simpleAllowed && <p className="text-sm text-muted-foreground">Estas series usan opciones que el modo Simple no muestra. Editalas en Avanzado para conservar toda la información.</p>}
+      <div className={activeMode === "simple" ? "" : "hidden"}>
+        <SimpleSetForm name={name} setsField={setsField} measurement={measurement} context={context} disabled={disabled} />
       </div>
-      <div className={mode === "advanced" ? "" : "hidden"}>
+      <div className={activeMode === "advanced" ? "" : "hidden"}>
         <AdvancedSetEditor name={name} setsField={setsField} measurement={measurement} context={context} disabled={disabled} />
       </div>
     </div>

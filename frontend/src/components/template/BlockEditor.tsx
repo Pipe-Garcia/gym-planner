@@ -46,8 +46,9 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
   const groupedSetLabel = groupedSetTypeLabel(exercises.fields.length)
 
   useEffect(() => {
+    if (disabled) return
     if (!isCircuit) {
-      setValue(`${blockPath}.totalDurationSeconds`, null, { shouldDirty: true })
+      if (getValues(`${blockPath}.totalDurationSeconds`) != null) setValue(`${blockPath}.totalDurationSeconds`, null, { shouldDirty: true })
     }
     if (isGroupedSet) {
       const currentRounds = getValues(`${blockPath}.targetRounds`)
@@ -55,12 +56,13 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
         setValue(`${blockPath}.targetRounds`, 3, { shouldDirty: true })
       }
     } else {
-      setValue(`${blockPath}.targetRounds`, null, { shouldDirty: true })
-      setValue(`${blockPath}.roundRestSeconds`, null, { shouldDirty: true })
+      if (getValues(`${blockPath}.targetRounds`) != null) setValue(`${blockPath}.targetRounds`, null, { shouldDirty: true })
+      if (getValues(`${blockPath}.roundRestSeconds`) != null) setValue(`${blockPath}.roundRestSeconds`, null, { shouldDirty: true })
     }
-  }, [blockPath, getValues, isCircuit, isGroupedSet, setValue])
+  }, [blockPath, disabled, getValues, isCircuit, isGroupedSet, setValue])
 
   function addExercise(exercise: ExerciseSummary) {
+    if (disabled) return
     exercises.append({ exerciseId: exercise.id, exerciseName: exercise.name, exerciseMeasurement: exercise.defaultMeasurement, orderIndex: exercises.fields.length + 1, exerciseNotes: null, sets: [emptySet(1)] })
   }
 
@@ -182,7 +184,7 @@ export function BlockEditor({ blockIndex, blockPath, blocksLength, onRemove, onM
           </div>
         </div>
       </CardContent>
-      <ExercisePicker open={pickerOpen} onOpenChange={setPickerOpen} onSelect={addExercise} />
+      <ExercisePicker open={pickerOpen && !disabled} onOpenChange={setPickerOpen} onSelect={addExercise} disabled={disabled} />
     </Card>
   )
 }

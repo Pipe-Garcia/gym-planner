@@ -1,6 +1,6 @@
 import { Copy, Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form"
 import { TrainingSectionsEditor } from "@/components/template/TrainingSectionsEditor"
 import { defaultDay, normalizeBlockOrder } from "@/components/template/formDefaults"
 import { Button } from "@/components/ui/button"
@@ -13,20 +13,29 @@ export function TrainingDaysEditor({
   disabled = false,
   studentId,
   excludeRoutineId,
+  selectedDay,
+  onSelectedDayChange,
 }: {
   context?: "template" | "routine"
   disabled?: boolean
   studentId?: number
   excludeRoutineId?: number | null
+  selectedDay?: number
+  onSelectedDayChange?: (index: number) => void
 }) {
-  const { control, register } = useFormContext()
+  const { control } = useFormContext()
   const days = useFieldArray({ control, name: "days" })
   const watched = useWatch({ control, name: "days" })
   const watchedDays = useMemo<DayInput[]>(
     () => (watched ?? []) as DayInput[],
     [watched],
   )
-  const [selected, setSelected] = useState(0)
+  const [localSelected, setLocalSelected] = useState(0)
+  const selected = selectedDay ?? localSelected
+  const setSelected = (index: number) => {
+    if (onSelectedDayChange) onSelectedDayChange(index)
+    else setLocalSelected(index)
+  }
   const activeIndex = Math.min(selected, Math.max(days.fields.length - 1, 0))
   const singleDay = days.fields.length <= 1
 
@@ -83,7 +92,14 @@ export function TrainingDaysEditor({
         <div className="grid gap-3 rounded-md border bg-white p-4 sm:grid-cols-[1fr_auto_auto]">
           <label className="space-y-1 text-sm font-medium">
             Dia
-            <Input disabled={disabled} {...register(`days.${activeIndex}.name`)} />
+            <Controller
+              control={control}
+              name={`days.${activeIndex}.name`}
+              render={({ field, fieldState }) => <>
+                <Input {...field} value={watchedDays[activeIndex]?.name ?? ""} disabled={disabled} aria-invalid={!!fieldState.error} />
+                {fieldState.error && <span className="text-xs text-destructive">{fieldState.error.message}</span>}
+              </>}
+            />
           </label>
           {!disabled ? (
             <Button type="button" variant="outline" className="self-end" onClick={() => duplicateDay(activeIndex)}>

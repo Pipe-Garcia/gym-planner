@@ -6,13 +6,15 @@ const isEmpty = (value: unknown) =>
 const nullableNumber = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().nullable())
 const nullablePositiveInt = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().int().positive().nullable())
 const nullableNonNegativeInt = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().int().nonnegative().nullable())
-const nullableText = z.preprocess((value) => (value === "" || value === undefined ? null : value), z.string().nullable())
-const nullableExecutionCue = z.preprocess((value) => {
+export const normalizeNullableTextValue = (value: unknown) => value === "" || value === undefined ? null : value
+export const normalizeExecutionCueValue = (value: unknown) => {
   if (value === undefined || value === null) return null
   if (typeof value !== "string") return value
   const trimmed = value.trim()
   return trimmed === "" ? null : trimmed
-}, z.string().max(120).nullable())
+}
+const nullableText = z.preprocess(normalizeNullableTextValue, z.string().nullable())
+const nullableExecutionCue = z.preprocess(normalizeExecutionCueValue, z.string().max(120).nullable())
 const nullablePositiveNumber = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().positive().nullable())
 const nullableRpe = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().int().min(1).max(10).nullable())
 const technicalPositiveInt = z.preprocess((value) => (isEmpty(value) ? 1 : value), z.number().int().positive())
@@ -105,6 +107,37 @@ export const routineFormSchema = templateFormSchema.extend({
   internalNotes: nullableText,
   status: z.enum(["ACTIVE", "FINISHED", "ARCHIVED", "DRAFT"]).optional(),
   days: z.array(draftDaySchema).min(1, "La rutina debe tener al menos un dia"),
+})
+
+// Persist an in-progress editor, including temporarily incomplete titles/names.
+// The submit schema above remains unchanged.
+const transientNullableNumber = z.preprocess((value) => (isEmpty(value) ? null : value), z.number().finite().nullable())
+const transientSetSchema = setSchema.extend({
+  targetReps: transientNullableNumber,
+  targetRepsMin: transientNullableNumber.optional(),
+  targetRepsMax: transientNullableNumber.optional(),
+  targetWeightKg: transientNullableNumber,
+  targetTimeSeconds: transientNullableNumber,
+  targetDistanceMeters: transientNullableNumber.optional(),
+  restAfterSeconds: transientNullableNumber,
+  rpe: transientNullableNumber,
+})
+const transientExerciseSchema = exerciseInBlockSchema.extend({ sets: z.array(transientSetSchema) })
+const transientBlockSchema = blockBaseSchema.extend({
+  title: z.string().max(150),
+  totalDurationSeconds: transientNullableNumber,
+  targetRounds: transientNullableNumber,
+  roundRestSeconds: transientNullableNumber,
+  exercises: z.array(transientExerciseSchema),
+})
+const transientDaySchema = draftDaySchema.extend({
+  name: z.string().max(150),
+  blocks: z.array(transientBlockSchema),
+})
+export const routineDraftFormSchema = routineFormSchema.safeExtend({
+  name: z.string().max(150),
+  assignedDate: z.string(),
+  days: z.array(transientDaySchema),
 })
 
 export type TemplateFormValues = z.infer<typeof templateFormSchema>

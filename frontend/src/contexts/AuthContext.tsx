@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { loginRequest } from "@/api/auth"
+import { cleanupDrafts } from "@/lib/routine-draft"
 import {
   clearAuthStorage,
   getStoredToken,
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    cleanupDrafts()
     const storedToken = getStoredToken()
     const storedUser = getStoredUser()
 
