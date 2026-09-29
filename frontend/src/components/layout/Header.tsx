@@ -1,6 +1,7 @@
 import { LogOut, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/useAuth"
+import { removeUserDrafts, stopUserDraftPersistence } from "@/lib/routine-draft"
 
 interface HeaderProps {
   gymName?: string
@@ -21,7 +22,13 @@ export function Header({ gymName, onMenuClick }: HeaderProps) {
           <p className="truncate text-xs text-muted-foreground">{user?.fullName}</p>
         </div>
       </div>
-      <Button type="button" variant="outline" onClick={logout}>
+      <Button type="button" variant="outline" onClick={() => {
+        if (user) {
+          stopUserDraftPersistence(user.gymId, user.id)
+          removeUserDrafts(user.gymId, user.id)
+        }
+        logout()
+      }}>
         <LogOut className="h-4 w-4" />
         <span className="hidden sm:inline">Salir</span>
       </Button>

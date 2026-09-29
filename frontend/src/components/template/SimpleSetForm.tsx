@@ -1,229 +1,101 @@
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
+import { useFormContext, useWatch } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { emptySet } from "@/components/template/formDefaults"
 import type { MeasurementType } from "@/types/exercise"
 import type { ExerciseSetInput } from "@/types/training"
 
+type SimpleField = "reps" | "time" | "distance" | "weight" | "rest"
+const pathField: Record<SimpleField, keyof ExerciseSetInput> = {
+  reps: "targetReps", time: "targetTimeSeconds", distance: "targetDistanceMeters",
+  weight: "targetWeightKg", rest: "restAfterSeconds",
+}
+
 interface Props {
+  name: string
   setsField: {
-    replace: (items: ExerciseSetInput[]) => void
     fields: { id: string }[]
+    append: (items: ExerciseSetInput[]) => void
+    remove: (indices: number[]) => void
   }
-  sets?: Partial<ExerciseSetInput>[]
   measurement: MeasurementType
   context: "template" | "routine"
   disabled?: boolean
-  active?: boolean
 }
 
-/**
- * Modo simple: todos los sets son iguales. Cualquier cambio se aplica
- * inmediatamente al form state — no hay botón "Aplicar".
- *
- * Si el usuario quiere sets distintos (pirámide, drop set, etc.), debe
- * cambiar al modo Avanzado.
- */
-export function SimpleSetForm({
-  setsField,
-  sets = [],
-  measurement,
-  context,
-  disabled,
-  active = true,
-}: Props) {
-  const { replace } = setsField
-  const firstSet = sets[0]
+export function SimpleSetForm({ name, setsField, measurement, context, disabled }: Props) {
+  const { control, getValues, setValue } = useFormContext()
+  const first = useWatch({ control, name: `${name}.0` }) as ExerciseSetInput | undefined
+  const count = setsField.fields.length
+  const [seriesInput, setSeriesInput] = useState(() => String(count || 1))
+  useEffect(() => setSeriesInput(String(count || 1)), [count])
 
-  // Valores derivados de los sets actuales. No usamos useState local porque
-  // queremos que el form sea la única fuente de verdad.
-  const values = useMemo(
-    () => ({
-      series:
-        measurement === "CIRCUIT_REPS"
-          ? 1
-          : sets.length > 0
-          ? sets.length
-          : 3,
-      reps: firstSet?.targetReps ?? null,
-      time: firstSet?.targetTimeSeconds ?? null,
-      distance: firstSet?.targetDistanceMeters ?? null,
-      weight: firstSet?.targetWeightKg ?? null,
-      rest: firstSet?.restAfterSeconds ?? null,
-    }),
-    [sets, measurement, firstSet],
-  )
-
-  // Cuando se monta por primera vez con sets vacíos, inicializa con un set
-  // vacío para que el modo simple tenga estructura. Solo una vez.
-  const initialized = useRef(false)
-  useEffect(() => {
-    if (!active || initialized.current) return
-    if (sets.length === 0) {
-      replace([emptySet(1)])
+  function changeField(field: SimpleField, raw: string) {
+    if (disabled) return
+    const numeric = raw === "" ? null : Number(raw)
+    const value = numeric === null || Number.isFinite(numeric) ? numeric : null
+    for (let index = 0; index < count; index++) {
+      setValue(`${name}.${index}.${pathField[field]}`, value, { shouldDirty: true, shouldTouch: true })
     }
-    initialized.current = true
-  }, [active, sets.length, replace])
-
-  function update(field: keyof typeof values, value: number | null) {
-    const count =
-      field === "series"
-        ? Math.max(1, value ?? 1)
-        : measurement === "CIRCUIT_REPS"
-        ? 1
-        : values.series
-
-    const nextValues = { ...values, [field]: value }
-
-    const nextSets: ExerciseSetInput[] = Array.from(
-      { length: count },
-      (_, index) => {
-        const set = emptySet(index + 1)
-        set.targetReps = null
-        set.targetWeightKg = null
-        set.targetTimeSeconds = null
-        set.targetDistanceMeters = null
-        set.restAfterSeconds = null
-
-        if (
-          measurement === "REPS_WEIGHT" ||
-          measurement === "REPS_ONLY" ||
-          measurement === "CIRCUIT_REPS"
-        ) {
-          set.targetReps = nextValues.reps
-        }
-        if (measurement === "REPS_WEIGHT" && context === "routine") {
-          set.targetWeightKg = nextValues.weight
-        }
-        if (measurement === "TIME") {
-          set.targetTimeSeconds = nextValues.time
-        }
-        if (measurement === "DISTANCE") {
-          set.targetDistanceMeters = nextValues.distance
-        }
-        if (measurement !== "CIRCUIT_REPS") {
-          set.restAfterSeconds = nextValues.rest
-        }
-        return set
-      },
-    )
-
-    replace(nextSets)
   }
 
-  function inputValue(v: number | null) {
-    return v === null ? "" : v
+  function commitSeries() {
+    if (disabled) return
+    const current = (getValues(name) ?? []) as ExerciseSetInput[]
+    if (!/^[1-9]\d*$/.test(seriesInput) || !Number.isSafeInteger(Number(seriesInput))) {
+      setSeriesInput(String(current.length || 1))
+      return
+    }
+    const target = Number(seriesInput)
+    if (target > current.length) {
+      const source = current[0]
+      const added = Array.from({ length: target - current.length }, (_, offset) => {
+        const next = emptySet(current.length + offset + 1)
+        if (source) {
+          if (["REPS_ONLY", "REPS_WEIGHT", "CIRCUIT_REPS"].includes(measurement)) next.targetReps = source.targetReps
+          if (measurement === "REPS_WEIGHT" && context === "routine") next.targetWeightKg = source.targetWeightKg
+          if (measurement === "TIME") next.targetTimeSeconds = source.targetTimeSeconds
+          if (measurement === "DISTANCE") next.targetDistanceMeters = source.targetDistanceMeters
+          if (measurement !== "CIRCUIT_REPS") next.restAfterSeconds = source.restAfterSeconds
+        }
+        return next
+      })
+      setsField.append(added)
+    } else if (target < current.length) {
+      setsField.remove(Array.from({ length: current.length - target }, (_, offset) => target + offset))
+    }
+    setSeriesInput(String(target))
   }
 
-  function parseNumber(raw: string): number | null {
-    if (raw === "") return null
-    const n = Number(raw)
-    return Number.isNaN(n) ? null : n
-  }
+  const inputValue = (value: number | null | undefined) => value ?? ""
+  const numericInput = (label: string, field: SimpleField, value: number | null | undefined, inputMode: "numeric" | "decimal" = "numeric", min = 1) => (
+    <Field label={label}>
+      <Input type="number" inputMode={inputMode} min={min} className="no-spinner w-full sm:max-w-[140px]"
+        value={inputValue(value)} disabled={disabled} onChange={(event) => changeField(field, event.target.value)} />
+    </Field>
+  )
 
   return (
     <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-      <p className="text-sm text-muted-foreground">
-        Modo simple: todas las series serán iguales. Para series distintas
-        (pirámide, drop set), usá el modo avanzado.
-      </p>
+      <p className="text-sm text-muted-foreground">Modo simple: todas las series serán iguales. Para series distintas, usá el modo avanzado.</p>
       <div className="grid gap-3 sm:grid-cols-[repeat(4,minmax(0,140px))]">
-        {measurement !== "CIRCUIT_REPS" && (
-          <Field label="Series">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              className="no-spinner w-full sm:max-w-[140px]"
-              value={inputValue(values.series)}
-              disabled={disabled}
-              onChange={(e) => update("series", parseNumber(e.target.value) ?? 1)}
-            />
-          </Field>
-        )}
-        {(measurement === "REPS_WEIGHT" ||
-          measurement === "REPS_ONLY" ||
-          measurement === "CIRCUIT_REPS") && (
-          <Field label="Reps">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              className="no-spinner w-full sm:max-w-[140px]"
-              value={inputValue(values.reps)}
-              disabled={disabled}
-              onChange={(e) => update("reps", parseNumber(e.target.value))}
-            />
-          </Field>
-        )}
-        {measurement === "TIME" && (
-          <Field label="Tiempo (seg)">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              className="no-spinner w-full sm:max-w-[140px]"
-              value={inputValue(values.time)}
-              disabled={disabled}
-              onChange={(e) => update("time", parseNumber(e.target.value))}
-            />
-          </Field>
-        )}
-        {measurement === "DISTANCE" && (
-          <Field label="Distancia (m)">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              className="no-spinner w-full sm:max-w-[140px]"
-              value={inputValue(values.distance)}
-              disabled={disabled}
-              onChange={(e) => update("distance", parseNumber(e.target.value))}
-            />
-          </Field>
-        )}
-        {measurement === "REPS_WEIGHT" && context === "routine" && (
-          <Field label="Peso (kg)">
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.5"
-              className="no-spinner w-full sm:max-w-[140px]"
-              value={inputValue(values.weight)}
-              disabled={disabled}
-              onChange={(e) => update("weight", parseNumber(e.target.value))}
-            />
-          </Field>
-        )}
-        {measurement === "REPS_WEIGHT" && context === "template" && (
-          <div className="self-end pb-2 text-xs italic text-muted-foreground">
-            El peso se asigna al crear la rutina del alumno.
-          </div>
-        )}
-        {measurement !== "CIRCUIT_REPS" && (
-          <Field label="Descanso (seg)">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              className="no-spinner w-full sm:max-w-[140px]"
-              value={inputValue(values.rest)}
-              disabled={disabled}
-              onChange={(e) => update("rest", parseNumber(e.target.value))}
-            />
-          </Field>
-        )}
+        {measurement !== "CIRCUIT_REPS" && <Field label="Series">
+          <Input type="number" inputMode="numeric" min={1} className="no-spinner w-full sm:max-w-[140px]"
+            value={seriesInput} disabled={disabled} onChange={(event) => setSeriesInput(event.target.value)}
+            onBlur={commitSeries} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commitSeries() } }} />
+        </Field>}
+        {["REPS_WEIGHT", "REPS_ONLY", "CIRCUIT_REPS"].includes(measurement) && numericInput("Reps", "reps", first?.targetReps)}
+        {measurement === "TIME" && numericInput("Tiempo (seg)", "time", first?.targetTimeSeconds)}
+        {measurement === "DISTANCE" && numericInput("Distancia (m)", "distance", first?.targetDistanceMeters)}
+        {measurement === "REPS_WEIGHT" && context === "routine" && numericInput("Peso (kg)", "weight", first?.targetWeightKg, "decimal", 0)}
+        {measurement === "REPS_WEIGHT" && context === "template" && <div className="self-end pb-2 text-xs italic text-muted-foreground">El peso se asigna al crear la rutina del alumno.</div>}
+        {measurement !== "CIRCUIT_REPS" && numericInput("Descanso (seg)", "rest", first?.restAfterSeconds, "numeric", 0)}
       </div>
     </div>
   )
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="space-y-1 text-sm font-medium sm:max-w-[140px]">
-      {label}
-      {children}
-    </label>
-  )
+  return <label className="space-y-1 text-sm font-medium sm:max-w-[140px]">{label}{children}</label>
 }

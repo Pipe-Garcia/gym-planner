@@ -31,6 +31,17 @@ interface Props {
 
 export function AdvancedSetEditor({ name, setsField, measurement, context, disabled }: Props) {
   const columns = visibleColumns(measurement, context)
+  const { getValues, setValue } = useFormContext()
+
+  function removeSet(index: number) {
+    setsField.remove(index)
+    const remaining = (getValues(name) ?? []) as ExerciseSetInput[]
+    remaining.forEach((set, position) => {
+      if (set.setNumber !== position + 1) {
+        setValue(`${name}.${position}.setNumber`, position + 1, { shouldDirty: true })
+      }
+    })
+  }
 
   return (
     <div className="space-y-3">
@@ -42,7 +53,7 @@ export function AdvancedSetEditor({ name, setsField, measurement, context, disab
             index={index}
             columns={columns}
             disabled={disabled}
-            onRemove={() => setsField.remove(index)}
+            onRemove={() => removeSet(index)}
           />
         ))}
       </div>

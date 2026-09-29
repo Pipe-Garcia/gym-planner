@@ -12,7 +12,7 @@
 > - Privacidad explícita de lesiones, limitaciones y notas internas.
 > - Versiones del stack actualizadas a 2026 (Spring Boot 3.5.x, React 19, Vite 8).
 > - Estrategia de prompts a Codex segmentada en 4 etapas, no un mega prompt.
-> - Generación automática de sets para casos simples (3×10×20 kg) en la UI.
+> - Edición rápida de series uniformes; 3×10×20 kg es un ejemplo, no el valor por defecto.
 
 ---
 
@@ -271,13 +271,14 @@ RoutineExercise (Sentadilla)
 **UX para casos simples**: cuando el profesor está creando un ejercicio en un bloque STANDARD, la UI le ofrece un modo rápido:
 
 ```
-[ Modo simple ]    Series: 3   Reps: 10   Peso: 20 kg   Descanso: 60s
-                   [Generar sets]
+[ Modo simple ]    Series: 1   Reps: —   Peso: —   Descanso: —
 
 [ Modo avanzado ]  Editar cada set individualmente (pirámide, drop set, etc.)
 ```
 
-Al hacer click en "Generar sets", la UI crea internamente 3 sets idénticos. El profesor nunca ve esa complejidad si no la necesita.
+Cada ejercicio nuevo comienza con 1 set. En Simple, el cambio de cantidad se confirma al salir del campo o pulsar Enter; se conservan los sets existentes y solo se agregan o quitan los necesarios. Simple queda deshabilitado cuando un set contiene datos que ese modo no muestra (por ejemplo RPE, tempo, indicación o un peso de plantilla), para evitar pérdida silenciosa. Avanzado sigue disponible.
+
+En el editor de rutinas, los cambios sin guardar generan un borrador local del navegador, separado por gimnasio, usuario y rutina. Al volver, si difiere del servidor, el usuario elige explícitamente entre recuperar o descartar. El borrador local vence a las 24 horas, se elimina al guardar correctamente o al cerrar sesión manualmente, y no sustituye el guardado en el servidor.
 
 Para CIRCUIT, el bloque tiene `totalDurationSeconds` y los ejercicios tienen un único set con el target (6 reps de salto al cajón) — el alumno los rota durante el tiempo del bloque.
 
@@ -661,7 +662,7 @@ Estas reglas viven en services y deben tener tests que las verifiquen explícita
 **Flujo:**
 1. Nombra la plantilla, elige deporte/objetivo/nivel.
 2. Agrega bloque 1 "Entrada en calor" (tipo STANDARD, propósito WARMUP).
-3. Agrega ejercicios al bloque, define sets default (modo simple: 3×10).
+3. Agrega ejercicios al bloque (1 set por defecto); puede definir 3×10 como ejemplo en modo simple.
 4. Agrega bloque 2 "Tren superior" (tipo PYRAMID).
 5. Para cada ejercicio define los sets distintos en modo avanzado.
 6. Agrega bloque 3 "Circuito" (tipo CIRCUIT, duración 12 min).

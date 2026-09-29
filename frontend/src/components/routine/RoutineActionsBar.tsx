@@ -67,6 +67,7 @@ interface RoutineActionsBarProps {
   studentPhone?: string | null
   studentLoading?: boolean
   studentError?: boolean
+  disabled?: boolean
 }
 
 type DialogName = "activate" | "finish" | "archive" | "delete" | "next" | "createNext" | null
@@ -82,6 +83,7 @@ export function RoutineActionsBar({
   studentPhone,
   studentLoading = false,
   studentError = false,
+  disabled = false,
 }: RoutineActionsBarProps) {
   const navigate = useNavigate()
   const toast = useToast()
@@ -155,6 +157,8 @@ export function RoutineActionsBar({
     onRoutineChanged()
     navigate(`/students/${studentId}/routines/${newRoutine.id}`)
   }
+
+  if (disabled && mode === "editor") return null
 
   return (
     <>

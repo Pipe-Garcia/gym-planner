@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 
-interface Props { open: boolean; onOpenChange: (open: boolean) => void; onSelect: (exercise: ExerciseSummary) => void }
+interface Props { open: boolean; onOpenChange: (open: boolean) => void; onSelect: (exercise: ExerciseSummary) => void; disabled?: boolean }
 
-export function ExercisePicker({ open, onOpenChange, onSelect }: Props) {
+export function ExercisePicker({ open, onOpenChange, onSelect, disabled }: Props) {
   const [search, setSearch] = useState("")
   const params = useMemo(() => ({ search: search || undefined, active: true, page: 0, size: 20, sort: "name,asc" }), [search])
   const query = useExercises(params)
@@ -23,7 +23,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: Props) {
         </div>
         <div className="grid gap-2">
           {(query.data?.content ?? []).map((exercise) => (
-            <button key={exercise.id} type="button" className="rounded-md border p-3 text-left hover:bg-muted" onClick={() => { onSelect(exercise); onOpenChange(false) }}>
+            <button key={exercise.id} type="button" disabled={disabled} className="rounded-md border p-3 text-left hover:bg-muted" onClick={() => { if (disabled) return; onSelect(exercise); onOpenChange(false) }}>
               <p className="font-medium">{exercise.name}</p>
               <p className="mt-1 text-xs text-muted-foreground">{exercise.tags.map((tag) => tag.name).join(" · ") || "Sin etiquetas"}</p>
             </button>

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Info, Loader2, Save } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { FormProvider, useForm, type FieldErrors, type Resolver } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
 import { RoutineActionsBar } from "@/components/routine/RoutineActionsBar"
@@ -9,15 +9,20 @@ import { TemplateMetadataForm } from "@/components/template/TemplateMetadataForm
 import { TrainingDaysEditor } from "@/components/template/TrainingDaysEditor"
 import { defaultDay, normalizeBlockForSubmit, normalizeBlockOrder } from "@/components/template/formDefaults"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useAuth } from "@/hooks/useAuth"
+import { useRoutineDraft } from "@/hooks/useRoutineDraft"
 import { useRoutine, useUpdateRoutine } from "@/hooks/useRoutines"
 import { useToast } from "@/hooks/useToast"
 import { formatDateEs } from "@/lib/date"
+import { loadDraft, removeDraft, sameEditableRoutine, type RoutineDraftEnvelope } from "@/lib/routine-draft"
 import { routineFormSchema, type RoutineFormValues } from "@/schemas/template.schema"
 import type { Routine, RoutineInput } from "@/types/training"
 
 type ErrorNode = { message?: string; [key: string]: unknown }
 
 export function RoutineEditorPage() {
+  const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const studentId = Number(useParams().studentId)
@@ -30,10 +35,42 @@ export function RoutineEditorPage() {
   })
   const routine = routineQuery.data
   const readOnly = routine?.status === "FINISHED" || routine?.status === "ARCHIVED"
+  const [hydratedId, setHydratedId] = useState<number | null>(null)
+  const [recovery, setRecovery] = useState<{ routineId: number; draft: RoutineDraftEnvelope } | null>(null)
+  const [selectedDay, setSelectedDay] = useState(0)
+  const [slowSave, setSlowSave] = useState(false)
+  const gymId = user?.gymId
+  const userId = user?.id
+  const scope = useMemo(() => gymId && userId && routineId > 0 ? { gymId, userId, routineId } : null, [gymId, userId, routineId])
+  const ready = hydratedId === routineId && routine?.id === routineId
+  const recoveryPending = recovery?.routineId === routineId
+  const mutationDisabled = readOnly || update.isPending || recoveryPending || !ready
+  const draft = useRoutineDraft(form, scope, selectedDay, Boolean(ready && !recoveryPending && !readOnly))
 
   useEffect(() => {
-    if (routine) form.reset(routineToForm(routine))
-  }, [routine, form])
+    if (!routine || routine.id !== routineId) return
+    if (hydratedId !== routineId) {
+      const serverValues = routineToForm(routine)
+      form.reset(serverValues)
+      setSelectedDay(0)
+      const stored = scope ? loadDraft(scope) : null
+      if (stored && !sameEditableRoutine(stored.formValues, serverValues)) {
+        setRecovery({ routineId, draft: stored })
+      } else {
+        if (stored && scope) removeDraft(scope)
+        setRecovery(null)
+      }
+      setHydratedId(routineId)
+    } else if (!recoveryPending && !form.formState.isDirty) {
+      form.reset(routineToForm(routine))
+    }
+  }, [routine, routineId, hydratedId, recoveryPending, scope, form])
+
+  useEffect(() => {
+    if (!update.isPending) { setSlowSave(false); return }
+    const timer = setTimeout(() => setSlowSave(true), 4000)
+    return () => clearTimeout(timer)
+  }, [update.isPending])
 
   useEffect(() => {
     if (routine?.status === "FINISHED" || routine?.status === "ARCHIVED") {
@@ -43,8 +80,10 @@ export function RoutineEditorPage() {
   }, [navigate, routine, studentId, toast])
 
   async function onSubmit(values: RoutineFormValues) {
+    if (mutationDisabled) return
     try {
       await update.mutateAsync(normalizeRoutine(values))
+      draft.clearOnSuccess()
       toast.success("Rutina guardada.")
       navigate(`/students/${studentId}/routines/${routineId}`)
     } catch (error) {
@@ -62,7 +101,7 @@ export function RoutineEditorPage() {
   return (
     <FormProvider {...form}>
       <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <Button type="button" variant="ghost" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/students/${studentId}`, { replace: true }))}>
+        <Button type="button" variant="ghost" disabled={update.isPending || recoveryPending} onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/students/${studentId}`, { replace: true }))}>
           ← Volver
         </Button>
         {routine ? (
@@ -70,13 +109,14 @@ export function RoutineEditorPage() {
             <RoutineIdentityHeader routine={routine} />
             <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
             {!readOnly ? (
-              <Button type="submit" disabled={update.isPending}>
+              <Button type="submit" disabled={mutationDisabled}>
                 {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {update.isPending ? "Guardando..." : "Guardar cambios"}
+                {update.isPending ? "Guardando rutina…" : "Guardar cambios"}
               </Button>
             ) : null}
-              <RoutineActionsBar routine={routine} studentId={studentId} mode="editor" onRoutineChanged={() => { void routineQuery.refetch() }} />
+              <RoutineActionsBar routine={routine} studentId={studentId} mode="editor" disabled={update.isPending || recoveryPending} onRoutineChanged={() => { void routineQuery.refetch() }} />
             </div>
+            {!readOnly && <p className="text-sm text-muted-foreground" role="status">{update.isPending ? slowSave ? draft.status === "protected" ? "El servidor está tardando en responder. Tus cambios siguen protegidos." : "El servidor está tardando en responder. Esperá a que finalice el guardado." : "Guardando…" : draft.status === "protected" ? "Sin guardar · borrador protegido" : draft.status === "unsaved" ? "Sin guardar" : "Guardado"}</p>}
           </div>
         ) : null}
         {readOnly && routine ? (
@@ -93,11 +133,37 @@ export function RoutineEditorPage() {
             </Button>
           </div>
         ) : null}
-        <TemplateMetadataForm routine readOnly={readOnly} />
-        <TrainingDaysEditor context="routine" disabled={readOnly} studentId={studentId} excludeRoutineId={routineId || null} />
+        {ready && <TemplateMetadataForm routine readOnly={mutationDisabled} />}
+        {ready && <TrainingDaysEditor context="routine" disabled={mutationDisabled} studentId={studentId} excludeRoutineId={routineId || null} selectedDay={selectedDay} onSelectedDayChange={setSelectedDay} />}
       </form>
+      <Dialog open={Boolean(recoveryPending)} onOpenChange={() => {}}>
+        <DialogContent showCloseButton={false} onEscapeKeyDown={(event) => event.preventDefault()} onPointerDownOutside={(event) => event.preventDefault()} onInteractOutside={(event) => event.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Recuperar cambios sin guardar</DialogTitle>
+            <DialogDescription>{recoveryPending ? draftDescription(recovery!.draft) : ""}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => { if (scope) removeDraft(scope); setRecovery(null) }}>Descartar</Button>
+            <Button type="button" onClick={() => {
+              if (!recoveryPending) return
+              const restored = recovery!.draft
+              form.reset(restored.formValues, { keepDefaultValues: true })
+              setSelectedDay(Math.min(restored.selectedDay, Math.max(restored.formValues.days.length - 1, 0)))
+              setRecovery(null)
+            }}>Recuperar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </FormProvider>
   )
+}
+
+function draftDescription(draft: RoutineDraftEnvelope): string {
+  const minutes = Math.max(1, Math.floor((Date.now() - draft.savedAt) / 60000))
+  const age = minutes < 60 ? `hace ${minutes} minutos` : `hace ${Math.floor(minutes / 60)} horas`
+  const days = draft.formValues.days.length
+  const exercises = draft.formValues.days.reduce((total, day) => total + day.blocks.reduce((subtotal, block) => subtotal + block.exercises.length, 0), 0)
+  return `Encontramos cambios sin guardar de ${age}. ${days} días · ${exercises} ejercicios.`
 }
 
 function routineToForm(routine: Routine): RoutineFormValues {
